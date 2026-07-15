@@ -1,0 +1,31 @@
+PHASE 1 – LOGIN UND MEHRERE GEWÄCHSHÄUSER
+
+1. Supabase öffnen -> SQL Editor -> New query.
+2. Inhalt von supabase/phase1_auth_multi_greenhouse.sql einfügen und Run drücken.
+3. Supabase -> Authentication -> URL Configuration:
+   Site URL: deine Vercel-Adresse
+   Redirect URLs zusätzlich:
+   http://localhost:3000/**
+   https://DEINE-VERCEL-DOMAIN.vercel.app/**
+4. Supabase -> Authentication -> Providers -> Email aktivieren.
+5. Projektdateien aus diesem Paket verwenden.
+6. npm install
+7. npm run dev
+8. Auf http://localhost:3000 ein Konto erstellen und E-Mail bestätigen.
+9. Supabase -> Authentication -> Users -> UUID deines Benutzers kopieren.
+10. Im SQL Editor ausführen:
+    insert into public.greenhouse_users (greenhouse_id, user_id, role)
+    values (1, 'DEINE-UUID', 'owner')
+    on conflict (greenhouse_id, user_id) do update set role = excluded.role;
+11. Neu anmelden. Gewächshaus 1 erscheint im Dashboard.
+
+WEITERES GEWÄCHSHAUS:
+- Neue Zeile in greenhouses anlegen.
+- Danach dem Benutzer zuordnen:
+  insert into public.greenhouse_users (greenhouse_id, user_id, role)
+  values (2, 'DEINE-UUID', 'owner');
+
+WICHTIG FÜR ESP32:
+Nach Aktivierung der RLS-Regeln wird der bisherige anonyme Direktzugriff des ESP32 blockiert.
+Der nächste Schritt ist deshalb ein geschützter Gerätezugang mit eigenem Device-Token.
+Die SQL-Datei erst am Betrieb produktiv aktivieren, wenn der aktualisierte ESP32-Code bereit ist.
