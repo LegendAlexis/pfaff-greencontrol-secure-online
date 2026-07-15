@@ -15,10 +15,10 @@ select cron.schedule(
   '* * * * *',
   $$
   select net.http_post(
-    url := '<DEINE_VERCEL_URL>/api/alerts/check',
+    url := 'https://pfaff-greencontrol.vercel.app',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'Authorization', 'Bearer <DEIN_ALERT_CRON_SECRET>'
+      'Authorization', 'Bearer PfaffGreenControl2026Warnsystem529'
     ),
     body := '{}'::jsonb,
     timeout_milliseconds := 20000

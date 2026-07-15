@@ -52,3 +52,32 @@ export async function toggleDevice(formData: FormData) {
   await writeAuditLog({ actorUserId: user.id, action: active ? "device.enabled" : "device.disabled", entityType: "device", entityId: deviceId, greenhouseId: data.greenhouse_id, metadata: { name: data.name } });
   revalidatePath("/devices");
 }
+
+
+export async function deleteDevice(formData: FormData) {
+  const { user } = await requireManager(true);
+  const deviceId = String(formData.get("device_id") ?? "");
+  if (!deviceId) throw new Error("Geräte-ID fehlt");
+
+  const admin = createAdminClient();
+  const { data: device, error: readError } = await admin
+    .from("devices")
+    .select("greenhouse_id,name")
+    .eq("id", deviceId)
+    .single();
+  if (readError) throw new Error(readError.message);
+
+  const { error: deleteError } = await admin.from("devices").delete().eq("id", deviceId);
+  if (deleteError) throw new Error(deleteError.message);
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "device.deleted",
+    entityType: "device",
+    entityId: deviceId,
+    greenhouseId: device.greenhouse_id,
+    oldValue: { name: device.name },
+  });
+
+  revalidatePath("/devices");
+}
