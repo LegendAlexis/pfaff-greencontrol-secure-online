@@ -1,204 +1,163 @@
 "use server";
 
+import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "../lib/supabase/server";
-import { getMailFrom, getMailTransporter } from "../lib/mail";
+import { createAdminClient } from "../../lib/supabase/admin";
+import { canAssignRole, requireManager, type SystemRole } from "../../lib/auth/permissions";
+import { writeAuditLog } from "../../lib/audit";
 
-async function authorizedClient(greenhouseId: number, write = true) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Nicht angemeldet");
+const allowedRoles: SystemRole[] = ["admin", "owner", "operator", "viewer"];
 
-  const query = supabase
-    .from("greenhouse_users")
-    .select("role")
-    .eq("greenhouse_id", greenhouseId)
-    .eq("user_id", user.id)
+function text(formData: FormData, name: string) {
+  return String(formData.get(name) ?? "").trim();
+}
+
+export async function inviteUser(formData: FormData) {
+  const { user: actor, profile: actorProfile } = await requireManager(true);
+  const email = text(formData, "email").toLowerCase();
+  const fullName = text(formData, "full_name");
+  const role = text(formData, "system_role") as SystemRole;
+  const greenhouseIds = formData.getAll("greenhouse_ids").map(Number).filter(Number.isFinite);
+
+  if (!email || !email.includes("@")) throw new Error("Gültige E-Mail-Adresse erforderlich");
+  if (!allowedRoles.includes(role) || !canAssignRole(actorProfile.system_role, role)) {
+    throw new Error("Diese Rolle darf nicht vergeben werden");
+  }
+
+  const admin = createAdminClient();
+  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/auth/confirm?next=/update-password`;
+  const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
+    redirectTo,
+    data: { full_name: fullName || email },
+  });
+  if (error) throw new Error(error.message);
+  if (!data.user) throw new Error("Einladung konnte nicht erstellt werden");
+
+  const { error: profileError } = await admin.from("profiles").upsert({
+    id: data.user.id,
+    full_name: fullName || email,
+    email,
+    system_role: role,
+    is_active: true,
+    mfa_required: role === "admin" || role === "owner",
+  }, { onConflict: "id" });
+  if (profileError) throw new Error(profileError.message);
+
+  if (greenhouseIds.length > 0) {
+    const greenhouseRole = role === "viewer" ? "viewer" : role === "operator" ? "operator" : "owner";
+    const { error: membershipError } = await admin.from("greenhouse_users").upsert(
+      greenhouseIds.map((greenhouseId) => ({ greenhouse_id: greenhouseId, user_id: data.user!.id, role: greenhouseRole })),
+      { onConflict: "greenhouse_id,user_id" },
+    );
+    if (membershipError) throw new Error(membershipError.message);
+  }
+
+  await admin.from("notification_settings").upsert({
+    user_id: data.user.id,
+    email_address: email,
+    email_enabled: false,
+    offline_alerts: true,
+    frost_alerts: true,
+    critical_alerts: true,
+  }, { onConflict: "user_id" });
+
+  await writeAuditLog({
+    actorUserId: actor.id,
+    action: "user.invited",
+    entityType: "user",
+    entityId: data.user.id,
+    newValue: { email, fullName, role, greenhouseIds },
+  });
+
+  redirect("/users?message=Einladung%20wurde%20gesendet");
+}
+
+export async function updateUserAccess(formData: FormData) {
+  const { user: actor, profile: actorProfile } = await requireManager(true);
+  const userId = text(formData, "user_id");
+  const fullName = text(formData, "full_name");
+  const role = text(formData, "system_role") as SystemRole;
+  const isActive = formData.get("is_active") === "on";
+  const mfaRequired = formData.get("mfa_required") === "on";
+  const greenhouseIds = formData.getAll("greenhouse_ids").map(Number).filter(Number.isFinite);
+
+  if (!userId || !allowedRoles.includes(role) || !canAssignRole(actorProfile.system_role, role)) {
+    throw new Error("Ungültige Benutzeränderung");
+  }
+
+  const admin = createAdminClient();
+  const { data: oldProfile, error: oldError } = await admin
+    .from("profiles")
+    .select("full_name,email,system_role,is_active,mfa_required")
+    .eq("id", userId)
     .single();
-  const { data, error } = await query;
-  if (error || !data) throw new Error("Keine Berechtigung");
-  if (write && data.role === "viewer") throw new Error("Nur Lesezugriff");
-  return supabase;
-}
+  if (oldError) throw new Error(oldError.message);
 
-function refresh(greenhouseId: number) {
-  revalidatePath("/dashboard");
-  revalidatePath(`/greenhouses/${greenhouseId}`);
-}
-
-export async function setAutoMode(greenhouseId: number, enabled: boolean) {
-  const supabase = await authorizedClient(greenhouseId);
-  const { error } = await supabase.from("greenhouses").update({ auto_mode: enabled }).eq("id", greenhouseId);
-  if (error) throw new Error(error.message);
-  refresh(greenhouseId);
-}
-
-export async function toggleRoofWindow(greenhouseId: number, open: boolean) {
-  const supabase = await authorizedClient(greenhouseId);
-  const { error } = await supabase.from("greenhouses").update({ roof_window_target: open, roof_manual_override: true }).eq("id", greenhouseId);
-  if (error) throw new Error(error.message);
-  refresh(greenhouseId);
-}
-
-export async function toggleWallWindow(greenhouseId: number, open: boolean) {
-  const supabase = await authorizedClient(greenhouseId);
-  const { error } = await supabase.from("greenhouses").update({ wall_window_target: open, wall_manual_override: true }).eq("id", greenhouseId);
-  if (error) throw new Error(error.message);
-  refresh(greenhouseId);
-}
-
-export async function toggleWatering(greenhouseId: number, on: boolean) {
-  const supabase = await authorizedClient(greenhouseId);
-  const { data: gh } = await supabase.from("greenhouses").select("temperature,status").eq("id", greenhouseId).single();
-  if (on && (gh?.status === "frost_protection" || (typeof gh?.temperature === "number" && gh.temperature <= 0))) {
-    throw new Error("Frostschutz aktiv: Bewässerung bleibt gesperrt");
-  }
-  const { error } = await supabase.from("greenhouses").update({ watering_target: on, watering_manual_override: true }).eq("id", greenhouseId);
-  if (error) throw new Error(error.message);
-  refresh(greenhouseId);
-}
-
-export async function enableAutomatic(greenhouseId: number, area: "roof" | "wall" | "watering") {
-  const supabase = await authorizedClient(greenhouseId);
-  const column = `${area}_manual_override`;
-  const { error } = await supabase.from("greenhouses").update({ [column]: false }).eq("id", greenhouseId);
-  if (error) throw new Error(error.message);
-  refresh(greenhouseId);
-}
-
-export async function updateGreenhouseSettings(greenhouseId: number, formData: FormData) {
-  const supabase = await authorizedClient(greenhouseId);
-  const roofOpen = Number(formData.get("roof_temperature_open"));
-  const roofClose = Number(formData.get("roof_temperature_close"));
-  const wallOpen = Number(formData.get("wall_temperature_open"));
-  const wallClose = Number(formData.get("wall_temperature_close"));
-  if (!(roofOpen > roofClose && wallOpen > wallClose)) {
-    throw new Error("Öffnungstemperatur muss über der Schließtemperatur liegen");
-  }
-  const { error } = await supabase.from("greenhouses").update({
-    roof_temperature_open: roofOpen,
-    roof_temperature_close: roofClose,
-    wall_temperature_open: wallOpen,
-    wall_temperature_close: wallClose,
-  }).eq("id", greenhouseId);
-  if (error) throw new Error(error.message);
-  refresh(greenhouseId);
-}
-
-export async function addSchedule(greenhouseId: number) {
-  const supabase = await authorizedClient(greenhouseId);
-  const { error } = await supabase.from("watering_schedule").insert({ greenhouse_id: greenhouseId, start_time: "12:00", duration_minutes: 10, enabled: true });
-  if (error) throw new Error(error.message);
-  refresh(greenhouseId);
-}
-
-export async function updateSchedule(greenhouseId: number, formData: FormData) {
-  const supabase = await authorizedClient(greenhouseId);
-  const id = Number(formData.get("id"));
-  const { error } = await supabase.from("watering_schedule").update({ start_time: formData.get("start_time"), duration_minutes: Number(formData.get("duration_minutes")), enabled: formData.get("enabled") === "on" }).eq("id", id).eq("greenhouse_id", greenhouseId);
-  if (error) throw new Error(error.message);
-  refresh(greenhouseId);
-}
-
-export async function deleteSchedule(greenhouseId: number, formData: FormData) {
-  const supabase = await authorizedClient(greenhouseId);
-  const id = Number(formData.get("id"));
-  const { error } = await supabase.from("watering_schedule").delete().eq("id", id).eq("greenhouse_id", greenhouseId);
-  if (error) throw new Error(error.message);
-  refresh(greenhouseId);
-}
-
-export async function updateNotificationSettings(formData: FormData) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Nicht angemeldet");
-
-  const emailAddress = String(formData.get("email_address") ?? "").trim().toLowerCase();
-  const emailEnabled = formData.get("email_enabled") === "on";
-
-  if (emailEnabled && !emailAddress) {
-    throw new Error("Für E-Mail-Warnungen muss eine Empfängeradresse eingetragen sein");
+  if (oldProfile.system_role === "admin" && (role !== "admin" || !isActive)) {
+    const { count } = await admin
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("system_role", "admin")
+      .eq("is_active", true);
+    if ((count ?? 0) <= 1) throw new Error("Der letzte aktive Administrator kann nicht entfernt werden");
   }
 
-  const { error } = await supabase
-    .from("notification_settings")
-    .upsert({
-      user_id: user.id,
-      email_address: emailAddress || user.email || null,
-      email_enabled: emailEnabled,
-      offline_alerts: formData.get("offline_alerts") === "on",
-      frost_alerts: formData.get("frost_alerts") === "on",
-      critical_alerts: formData.get("critical_alerts") === "on",
-      updated_at: new Date().toISOString(),
-    }, { onConflict: "user_id" });
+  if (actor.id === userId && !isActive) throw new Error("Das eigene Konto kann nicht deaktiviert werden");
 
-  if (error) throw new Error(error.message);
+  const { error: updateError } = await admin.from("profiles").update({
+    full_name: fullName || oldProfile.email,
+    system_role: role,
+    is_active: isActive,
+    mfa_required: mfaRequired || role === "admin" || role === "owner",
+    updated_at: new Date().toISOString(),
+  }).eq("id", userId);
+  if (updateError) throw new Error(updateError.message);
 
-  revalidatePath("/notifications");
+  const { error: deleteError } = await admin.from("greenhouse_users").delete().eq("user_id", userId);
+  if (deleteError) throw new Error(deleteError.message);
+
+  if (greenhouseIds.length > 0) {
+    const greenhouseRole = role === "viewer" ? "viewer" : role === "operator" ? "operator" : "owner";
+    const { error: membershipError } = await admin.from("greenhouse_users").insert(
+      greenhouseIds.map((greenhouseId) => ({ greenhouse_id: greenhouseId, user_id: userId, role: greenhouseRole })),
+    );
+    if (membershipError) throw new Error(membershipError.message);
+  }
+
+  await writeAuditLog({
+    actorUserId: actor.id,
+    action: "user.access_updated",
+    entityType: "user",
+    entityId: userId,
+    oldValue: oldProfile,
+    newValue: { fullName, role, isActive, mfaRequired, greenhouseIds },
+  });
+
+  revalidatePath("/users");
 }
 
+export async function resendInvitation(formData: FormData) {
+  const { user: actor } = await requireManager(true);
+  const email = text(formData, "email").toLowerCase();
+  const admin = createAdminClient();
+  const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/auth/confirm?next=/update-password`;
+  const { error } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo });
+  if (error) throw new Error(error.message);
+  await writeAuditLog({ actorUserId: actor.id, action: "user.invitation_resent", entityType: "user", metadata: { email } });
+  redirect("/users?message=Einladung%20erneut%20gesendet");
+}
 
-export async function sendTestWarningEmail() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+export async function revokeSessions(formData: FormData) {
+  const { user: actor } = await requireManager(true);
+  const userId = text(formData, "user_id");
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.signOut(userId, "global");
+  if (error) throw new Error(error.message);
+  await writeAuditLog({ actorUserId: actor.id, action: "user.sessions_revoked", entityType: "user", entityId: userId });
+  revalidatePath("/users");
+}
 
-  const { data: settings, error } = await supabase
-    .from("notification_settings")
-    .select("email_address,email_enabled")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (error) {
-    redirect(`/notifications?mail=error&message=${encodeURIComponent(error.message)}`);
-  }
-
-  if (!settings?.email_enabled) {
-    redirect("/notifications?mail=disabled");
-  }
-
-  const recipient = settings.email_address || user.email;
-  if (!recipient) {
-    redirect("/notifications?mail=no-recipient");
-  }
-
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    redirect("/notifications?mail=not-configured");
-  }
-
-  try {
-    const transporter = getMailTransporter();
-    await transporter.verify();
-
-    await transporter.sendMail({
-      from: getMailFrom(),
-      to: recipient,
-      subject: "Pfaff GreenControl – Testwarnung",
-      text: [
-        "Dies ist eine Testwarnung von Pfaff GreenControl.",
-        "",
-        "Der E-Mail-Versand wurde erfolgreich eingerichtet.",
-        "Es liegt keine echte Störung vor.",
-      ].join("\n"),
-      html: `
-        <div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;padding:24px;background:#f4f7f5;color:#17201b">
-          <div style="background:#123b2a;color:white;padding:20px;border-radius:14px 14px 0 0">
-            <div style="font-size:13px;letter-spacing:1.5px;text-transform:uppercase;opacity:.8">Pfaff GreenControl</div>
-            <h1 style="margin:8px 0 0;font-size:26px">Testwarnung</h1>
-          </div>
-          <div style="background:white;padding:24px;border-radius:0 0 14px 14px;border:1px solid #dfe8e2">
-            <p style="font-size:17px;margin-top:0"><strong>Der E-Mail-Versand funktioniert.</strong></p>
-            <p>Dies ist nur ein Test. Es liegt keine echte Störung im Gewächshaus vor.</p>
-            <p style="color:#647067;font-size:13px;margin-bottom:0">Empfänger: ${recipient}</p>
-          </div>
-        </div>
-      `,
-    });
-  } catch (mailError) {
-    const message = mailError instanceof Error ? mailError.message : "Unbekannter Mailfehler";
-    redirect(`/notifications?mail=error&message=${encodeURIComponent(message)}`);
-  }
-
-  redirect("/notifications?mail=sent");
+export async function createTemporaryPassword() {
+  return randomBytes(18).toString("base64url");
 }
