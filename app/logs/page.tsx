@@ -19,6 +19,39 @@ type Profile = {
   email: string | null;
 };
 
+const ACTION_LABELS: Record<string, { label: string; tone: string; icon: string }> = {
+  "device.registered": { label: "Gerät registriert", tone: "text-emerald-300 bg-emerald-500/10", icon: "＋" },
+  "device.enabled": { label: "Gerät aktiviert", tone: "text-emerald-300 bg-emerald-500/10", icon: "✓" },
+  "device.disabled": { label: "Gerät deaktiviert", tone: "text-amber-300 bg-amber-500/10", icon: "⏸" },
+  "device.deleted": { label: "Gerät gelöscht", tone: "text-red-300 bg-red-500/10", icon: "×" },
+  "device.secret_rotated": { label: "Geräte-Secret erneuert", tone: "text-sky-300 bg-sky-500/10", icon: "↻" },
+  "user.invited": { label: "Benutzer eingeladen", tone: "text-emerald-300 bg-emerald-500/10", icon: "＋" },
+  "user.access_updated": { label: "Benutzerrechte geändert", tone: "text-sky-300 bg-sky-500/10", icon: "✎" },
+  "user.disabled": { label: "Benutzer gesperrt", tone: "text-red-300 bg-red-500/10", icon: "⊘" },
+  "user.enabled": { label: "Benutzer aktiviert", tone: "text-emerald-300 bg-emerald-500/10", icon: "✓" },
+  "user.sessions_revoked": { label: "Sitzungen beendet", tone: "text-amber-300 bg-amber-500/10", icon: "↪" },
+};
+
+function actionDisplay(action: string) {
+  return ACTION_LABELS[action] ?? {
+    label: action.replaceAll(".", " · "),
+    tone: "text-zinc-300 bg-zinc-500/10",
+    icon: "•",
+  };
+}
+
+function objectLabel(log: AuditLog) {
+  const name = typeof log.metadata?.name === "string" ? log.metadata.name : null;
+  const typeLabels: Record<string, string> = {
+    device: "Gerät",
+    user: "Benutzer",
+    greenhouse: "Gewächshaus",
+    notification: "Warnmeldung",
+  };
+  const type = typeLabels[log.entity_type] ?? log.entity_type;
+  return name ? `${type}: ${name}` : type;
+}
+
 export default async function LogsPage() {
   await requireManager();
   const admin = createAdminClient();
@@ -69,12 +102,20 @@ export default async function LogsPage() {
               {(logs as AuditLog[] | null)?.length ? (
                 (logs as AuditLog[]).map((log) => {
                   const profile = log.actor_user_id ? profilesById.get(log.actor_user_id) : null;
+                  const display = actionDisplay(log.action);
                   return (
-                    <tr key={log.id} className="border-t border-zinc-800 bg-zinc-950">
-                      <td className="p-4">{new Date(log.created_at).toLocaleString("de-CH")}</td>
+                    <tr key={log.id} className="border-t border-zinc-800 bg-zinc-950 hover:bg-zinc-900/60">
+                      <td className="p-4 whitespace-nowrap">{new Date(log.created_at).toLocaleString("de-CH")}</td>
                       <td className="p-4">{profile?.full_name || profile?.email || "System"}</td>
-                      <td className="p-4 font-mono text-emerald-300">{log.action}</td>
-                      <td className="p-4">{log.entity_type}{log.entity_id ? ` · ${log.entity_id}` : ""}</td>
+                      <td className="p-4">
+                        <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 font-bold ${display.tone}`}>
+                          <span aria-hidden>{display.icon}</span>{display.label}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <div className="font-semibold">{objectLabel(log)}</div>
+                        {log.entity_id && <div className="mt-1 max-w-[260px] truncate font-mono text-xs text-zinc-500" title={log.entity_id}>{log.entity_id}</div>}
+                      </td>
                       <td className="p-4">{log.greenhouse_id ? `GH${String(log.greenhouse_id).padStart(2, "0")}` : "—"}</td>
                     </tr>
                   );

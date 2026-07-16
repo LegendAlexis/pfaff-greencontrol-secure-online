@@ -35,17 +35,21 @@ export async function getCurrentIdentity() {
   };
 }
 
-export async function requireManager(requireMfa = false) {
+export async function requireManager(requireMfa = false, returnTo = "/dashboard") {
   const identity = await getCurrentIdentity();
-  if (!(["admin", "owner"] as SystemRole[]).includes(identity.profile.system_role)) {
+  if (!( ["admin", "owner"] as SystemRole[]).includes(identity.profile.system_role)) {
     redirect("/dashboard?error=Keine%20Berechtigung");
   }
 
   if (requireMfa) {
     const supabase = await createClient();
-    const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (!data || data.currentLevel !== "aal2") {
-      redirect("/security/mfa?message=MFA%20ist%20für%20diese%20Aktion%20erforderlich");
+    const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+
+    if (error || !data || data.currentLevel !== "aal2") {
+      const safeReturnTo = returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/dashboard";
+      redirect(
+        `/security/mfa?message=${encodeURIComponent("Bitte bestätige die Aktion mit deinem Authenticator-Code.")}&returnTo=${encodeURIComponent(safeReturnTo)}`
+      );
     }
   }
 

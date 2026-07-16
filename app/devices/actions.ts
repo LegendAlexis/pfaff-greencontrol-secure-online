@@ -12,7 +12,7 @@ function hashSecret(secret: string) {
 }
 
 export async function registerDevice(formData: FormData) {
-  const { user } = await requireManager(true);
+  const { user } = await requireManager(true, "/devices");
   const greenhouseId = Number(formData.get("greenhouse_id"));
   const name = String(formData.get("name") ?? "").trim();
   if (!Number.isFinite(greenhouseId) || !name) throw new Error("Gerätename und Gewächshaus sind erforderlich");
@@ -32,7 +32,7 @@ export async function registerDevice(formData: FormData) {
 }
 
 export async function rotateDeviceSecret(formData: FormData) {
-  const { user } = await requireManager(true);
+  const { user } = await requireManager(true, "/devices");
   const deviceId = String(formData.get("device_id") ?? "");
   const secret = randomBytes(32).toString("base64url");
   const admin = createAdminClient();
@@ -43,7 +43,7 @@ export async function rotateDeviceSecret(formData: FormData) {
 }
 
 export async function toggleDevice(formData: FormData) {
-  const { user } = await requireManager(true);
+  const { user } = await requireManager(true, "/devices");
   const deviceId = String(formData.get("device_id") ?? "");
   const active = formData.get("active") === "true";
   const admin = createAdminClient();
@@ -55,7 +55,7 @@ export async function toggleDevice(formData: FormData) {
 
 
 export async function deleteDevice(formData: FormData) {
-  const { user } = await requireManager(true);
+  const { user } = await requireManager(true, "/devices");
   const deviceId = String(formData.get("device_id") ?? "");
   if (!deviceId) throw new Error("Geräte-ID fehlt");
 
