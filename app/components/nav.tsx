@@ -1,11 +1,65 @@
 import Link from "next/link";
 import { logout } from "../auth-actions";
 import { getCurrentIdentity } from "../../lib/auth/permissions";
+import NavLinks from "./nav-links";
+
+type NavIcon = "home" | "weather" | "chart" | "bell" | "users" | "device" | "log" | "shield";
 
 export default async function Nav() {
-  const {profile}=await getCurrentIdentity();
-  const items=[["Dashboard","/dashboard"],["Wetterstation","/weather"],["Diagramme","/history"],["Warnmails","/notifications"]];
-  if(["admin","owner"].includes(profile.system_role)) items.push(["Benutzer","/users"],["Geräte","/devices"],["Protokoll","/logs"]);
-  items.push(["Sicherheit","/security/mfa"]);
-  return <nav className="sticky top-0 z-40 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur"><div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4"><Link href="/dashboard" className="font-black tracking-tight text-emerald-400">Pfaff GreenControl</Link><div className="hidden gap-5 md:flex">{items.map(([label,href])=><Link key={href} href={href} className="text-sm font-semibold text-zinc-300 hover:text-white">{label}</Link>)}</div><form action={logout}><button className="rounded-xl border border-zinc-700 px-3 py-2 text-sm font-bold hover:bg-zinc-800">Abmelden</button></form></div><div className="flex gap-1 overflow-x-auto border-t border-zinc-800 px-2 py-2 md:hidden">{items.map(([label,href])=><Link key={href} href={href} className="shrink-0 rounded-lg px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-zinc-800">{label}</Link>)}</div></nav>;
+  const { profile } = await getCurrentIdentity();
+
+  const items: { label: string; href: string; icon: NavIcon }[] = [
+    { label: "Dashboard", href: "/dashboard", icon: "home" },
+    { label: "Wetterstation", href: "/weather", icon: "weather" },
+    { label: "Diagramme", href: "/history", icon: "chart" },
+    { label: "Warnungen", href: "/notifications", icon: "bell" },
+  ];
+
+  if (["admin", "owner"].includes(profile.system_role)) {
+    items.push(
+      { label: "Benutzer", href: "/users", icon: "users" },
+      { label: "Geräte", href: "/devices", icon: "device" },
+      { label: "Protokoll", href: "/logs", icon: "log" },
+    );
+  }
+
+  items.push({ label: "Sicherheit", href: "/security/mfa", icon: "shield" });
+
+  const initials = (profile.full_name || profile.email || "AP")
+    .split(/\s|@/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part: string) => part[0]?.toUpperCase())
+    .join("") || "AP";
+
+  return (
+    <nav className="gc-nav">
+      <div className="gc-nav-inner">
+        <Link href="/dashboard" className="gc-brand" aria-label="Pfaff GreenControl Dashboard">
+          <span className="gc-brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 42" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M16 40V4" />
+              <path d="M16 13C9 11 5 7 5 2c7 1 11 5 11 11Z" />
+              <path d="M16 20c7-2 11-6 11-11-7 1-11 5-11 11Z" />
+              <path d="M16 28C9 26 5 22 5 17c7 1 11 5 11 11Z" />
+              <path d="M16 35c7-2 11-6 11-11-7 1-11 5-11 11Z" />
+            </svg>
+          </span>
+          <span>
+            <strong>Pfaff GreenControl</strong>
+            <small>Gewächshaus Steuerung</small>
+          </span>
+        </Link>
+
+        <NavLinks items={items} />
+
+        <form action={logout} className="gc-account-wrap">
+          <button type="submit" className="gc-account" title="Abmelden">
+            <span>{initials}</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+        </form>
+      </div>
+    </nav>
+  );
 }
