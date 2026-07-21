@@ -90,14 +90,36 @@ export async function toggleWatering(greenhouseId: number, on: boolean) {
   refresh(greenhouseId);
 }
 
-export async function enableAutomatic(greenhouseId: number, area: "roof" | "wall" | "watering") {
+export async function enableAutomatic(
+  greenhouseId: number,
+  area: "roof" | "wall" | "watering",
+) {
   const supabase = await authorizedClient(greenhouseId);
-  const column = area === "roof" ? "roof_manual_override" : area === "wall" ? "wall_manual_override" : "watering_manual_override";
+
+  let values: Record<string, boolean>;
+
+  if (area === "roof") {
+    values = {
+      roof_manual_override: false,
+    };
+  } else if (area === "wall") {
+    values = {
+      wall_manual_override: false,
+    };
+  } else {
+    values = {
+      watering_manual_override: false,
+      watering_target: false,
+    };
+  }
+
   const { error } = await supabase
     .from("greenhouses")
-    .update({ [column]: false })
+    .update(values)
     .eq("id", greenhouseId);
+
   if (error) throw new Error(error.message);
+
   refresh(greenhouseId);
 }
 
