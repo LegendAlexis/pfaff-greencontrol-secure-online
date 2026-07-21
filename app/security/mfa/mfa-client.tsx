@@ -124,30 +124,30 @@ export default function MfaClient({ returnTo = "/dashboard" }: { returnTo?: stri
 
   return (
     <div className="space-y-6">
-      {message && <div className="rounded-xl border border-zinc-700 bg-zinc-900 p-4">{message}</div>}
+      {message && <div className="rounded-xl border border-slate-300 bg-white p-4">{message}</div>}
 
-      <section className={`rounded-2xl border p-5 ${currentLevel === "aal2" ? "border-emerald-700 bg-emerald-950/20" : "border-zinc-800 bg-zinc-900"}`}>
+      <section className={`rounded-2xl border p-5 ${currentLevel === "aal2" ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white"}`}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-2xl font-bold">Sicherheitsstatus der Sitzung</h2>
-            <p className="mt-2 text-zinc-400">
+            <p className="mt-2 text-slate-600">
               Ein verifizierter Authenticator ist eingerichtet. Für Löschen, Secret-Wechsel und Benutzeränderungen muss zusätzlich die aktuelle Sitzung bestätigt sein.
             </p>
           </div>
-          <span className={`rounded-full px-3 py-1 text-sm font-bold ${currentLevel === "aal2" ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-300"}`}>
+          <span className={`rounded-full px-3 py-1 text-sm font-bold ${currentLevel === "aal2" ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-700"}`}>
             {currentLevel === "aal2" ? "MFA-Sitzung aktiv" : "Bestätigung erforderlich"}
           </span>
         </div>
         <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-          <div><dt className="text-zinc-500">Aktuelle Stufe</dt><dd className="font-bold">{currentLevel ?? "unbekannt"}</dd></div>
-          <div><dt className="text-zinc-500">Mögliche Stufe</dt><dd className="font-bold">{nextLevel ?? "unbekannt"}</dd></div>
+          <div><dt className="text-slate-500">Aktuelle Stufe</dt><dd className="font-bold">{currentLevel ?? "unbekannt"}</dd></div>
+          <div><dt className="text-slate-500">Mögliche Stufe</dt><dd className="font-bold">{nextLevel ?? "unbekannt"}</dd></div>
         </dl>
       </section>
 
       {needsSessionVerification && (
-        <section className="rounded-2xl border border-amber-700 bg-amber-950/20 p-5">
+        <section className="rounded-2xl border border-amber-300 bg-amber-50 p-5">
           <h2 className="text-2xl font-bold">Kritische Aktion bestätigen</h2>
-          <p className="mt-2 text-zinc-300">
+          <p className="mt-2 text-slate-700">
             Öffne deine Authenticator-App und gib den aktuellen sechsstelligen Code ein. Danach wirst du automatisch zur vorherigen Seite zurückgeleitet.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
@@ -160,7 +160,7 @@ export default function MfaClient({ returnTo = "/dashboard" }: { returnTo?: stri
               inputMode="numeric"
               autoComplete="one-time-code"
               placeholder="6-stelliger Code"
-              className="rounded-xl border border-zinc-700 bg-zinc-950 p-3"
+              className="rounded-xl border border-slate-300 bg-slate-50 p-3"
             />
             <button
               type="button"
@@ -174,22 +174,22 @@ export default function MfaClient({ returnTo = "/dashboard" }: { returnTo?: stri
         </section>
       )}
 
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+      <section className="rounded-2xl border border-slate-200 bg-white p-5">
         <h2 className="text-2xl font-bold">Aktive Authenticatoren</h2>
         {factors.length === 0 ? (
-          <p className="mt-3 text-zinc-400">Noch kein Authenticator für Pfaff GreenControl eingerichtet.</p>
+          <p className="mt-3 text-slate-600">Noch kein Authenticator für Pfaff GreenControl eingerichtet.</p>
         ) : (
           <div className="mt-4 space-y-3">
             {factors.map((factor) => (
-              <div key={factor.id} className="flex items-center justify-between rounded-xl border border-zinc-700 bg-zinc-950 p-4">
+              <div key={factor.id} className="flex items-center justify-between rounded-xl border border-slate-300 bg-slate-50 p-4">
                 <div>
                   <p className="font-bold">{factor.friendly_name || "Authenticator"}</p>
-                  <p className="text-sm text-zinc-500">Status: {factor.status}</p>
+                  <p className="text-sm text-slate-500">Status: {factor.status}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => removeFactor(factor.id)}
-                  className="rounded-xl border border-red-800 px-3 py-2 text-sm font-bold text-red-300"
+                  className="rounded-xl border border-red-300 px-3 py-2 text-sm font-bold text-red-700"
                 >
                   Entfernen
                 </button>
@@ -206,17 +206,17 @@ export default function MfaClient({ returnTo = "/dashboard" }: { returnTo?: stri
       )}
 
       {qrCode && (
-        <section className="rounded-2xl border border-emerald-700 bg-emerald-950/20 p-5">
+        <section className="rounded-2xl border border-emerald-300 bg-emerald-50 p-5">
           <h2 className="text-2xl font-bold">Authenticator verbinden</h2>
-          <ol className="mt-3 list-decimal space-y-2 pl-5 text-zinc-300">
+          <ol className="mt-3 list-decimal space-y-2 pl-5 text-slate-700">
             <li>Öffne deine Authenticator-App.</li>
             <li>Scanne den QR-Code.</li>
             <li>Gib den angezeigten sechsstelligen Code ein.</li>
           </ol>
           <div className="mt-5 w-fit rounded-xl bg-white p-4"><img src={qrCode} alt="MFA QR-Code" className="h-52 w-52" /></div>
-          <details className="mt-4 text-sm text-zinc-400"><summary>Manuellen Schlüssel anzeigen</summary><code className="mt-2 block break-all rounded-lg bg-black/30 p-3">{secret}</code></details>
+          <details className="mt-4 text-sm text-slate-600"><summary>Manuellen Schlüssel anzeigen</summary><code className="mt-2 block break-all rounded-lg bg-emerald-50 p-3">{secret}</code></details>
           <div className="mt-5 flex flex-wrap gap-3">
-            <input value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="6-stelliger Code" className="rounded-xl border border-zinc-700 bg-zinc-950 p-3" />
+            <input value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="6-stelliger Code" className="rounded-xl border border-slate-300 bg-slate-50 p-3" />
             <button type="button" onClick={verifyEnrollment} disabled={code.length !== 6 || busy} className="rounded-xl bg-emerald-600 px-5 py-3 font-black disabled:opacity-40">
               {busy ? "Wird geprüft …" : "Bestätigen"}
             </button>

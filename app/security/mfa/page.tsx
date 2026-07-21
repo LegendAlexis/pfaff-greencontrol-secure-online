@@ -28,7 +28,7 @@ export default async function MfaPage({
     profile.system_role === "owner";
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white">
+    <main className="min-h-screen bg-slate-50 text-slate-950">
       <Nav />
 
       <div className="mx-auto max-w-4xl p-5 md:p-8">
@@ -40,31 +40,31 @@ export default async function MfaPage({
           Zwei-Faktor-Authentifizierung
         </h1>
 
-        <p className="mt-3 max-w-2xl text-zinc-400">
+        <p className="mt-3 max-w-2xl text-slate-600">
           Jeder angemeldete Benutzer kann sein Konto mit einer
           Authenticator-App schützen. Die Zwei-Faktor-Authentifizierung
           verändert die Rolle und die Berechtigungen eines Benutzers nicht.
         </p>
 
         {isManager ? (
-          <div className="mt-6 rounded-xl border border-amber-700 bg-amber-950/30 p-4 text-amber-100">
+          <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-800">
             <p className="font-bold">
               Zusätzlicher Schutz für kritische Aktionen
             </p>
 
-            <p className="mt-1 text-sm text-amber-200">
+            <p className="mt-1 text-sm text-amber-700">
               Administratoren und Besitzer müssen ihre aktuelle Sitzung mit
               einem Authenticator-Code bestätigen, bevor sie beispielsweise
               Geräte löschen, Secrets erneuern oder Benutzerrechte ändern.
             </p>
           </div>
         ) : (
-          <div className="mt-6 rounded-xl border border-emerald-800 bg-emerald-950/20 p-4 text-emerald-100">
+          <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800">
             <p className="font-bold">
               Freiwilliger zusätzlicher Kontoschutz
             </p>
 
-            <p className="mt-1 text-sm text-emerald-200">
+            <p className="mt-1 text-sm text-emerald-700">
               Du kannst einen Authenticator einrichten, erhältst dadurch aber
               keine zusätzlichen Steuerungs- oder Verwaltungsrechte.
             </p>
@@ -72,15 +72,15 @@ export default async function MfaPage({
         )}
 
         {params.message && (
-          <div className="mt-6 rounded-xl border border-amber-700 bg-amber-950/30 p-4 text-amber-200">
+          <div className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-700">
             {params.message}
           </div>
         )}
 
-        <section className="mt-7 rounded-xl border border-zinc-800 bg-zinc-900 p-5 text-sm">
+        <section className="mt-7 rounded-xl border border-slate-200 bg-white p-5 text-sm">
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
-              <p className="text-xs uppercase tracking-wide text-zinc-500">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
                 Konto
               </p>
               <p className="mt-1 break-all font-semibold">
@@ -89,7 +89,7 @@ export default async function MfaPage({
             </div>
 
             <div>
-              <p className="text-xs uppercase tracking-wide text-zinc-500">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
                 Rolle
               </p>
               <p className="mt-1 font-semibold">
@@ -98,7 +98,7 @@ export default async function MfaPage({
             </div>
 
             <div>
-              <p className="text-xs uppercase tracking-wide text-zinc-500">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
                 MFA-Regel
               </p>
               <p className="mt-1 font-semibold">

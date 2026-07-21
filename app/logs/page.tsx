@@ -22,20 +22,20 @@ type Profile = {
 const ACTION_LABELS: Record<string, { label: string; tone: string; icon: string }> = {
   "device.registered": { label: "Gerät registriert", tone: "text-emerald-300 bg-emerald-500/10", icon: "＋" },
   "device.enabled": { label: "Gerät aktiviert", tone: "text-emerald-300 bg-emerald-500/10", icon: "✓" },
-  "device.disabled": { label: "Gerät deaktiviert", tone: "text-amber-300 bg-amber-500/10", icon: "⏸" },
-  "device.deleted": { label: "Gerät gelöscht", tone: "text-red-300 bg-red-500/10", icon: "×" },
+  "device.disabled": { label: "Gerät deaktiviert", tone: "text-amber-700 bg-amber-500/10", icon: "⏸" },
+  "device.deleted": { label: "Gerät gelöscht", tone: "text-red-700 bg-red-500/10", icon: "×" },
   "device.secret_rotated": { label: "Geräte-Secret erneuert", tone: "text-sky-300 bg-sky-500/10", icon: "↻" },
   "user.invited": { label: "Benutzer eingeladen", tone: "text-emerald-300 bg-emerald-500/10", icon: "＋" },
   "user.access_updated": { label: "Benutzerrechte geändert", tone: "text-sky-300 bg-sky-500/10", icon: "✎" },
-  "user.disabled": { label: "Benutzer gesperrt", tone: "text-red-300 bg-red-500/10", icon: "⊘" },
+  "user.disabled": { label: "Benutzer gesperrt", tone: "text-red-700 bg-red-500/10", icon: "⊘" },
   "user.enabled": { label: "Benutzer aktiviert", tone: "text-emerald-300 bg-emerald-500/10", icon: "✓" },
-  "user.sessions_revoked": { label: "Sitzungen beendet", tone: "text-amber-300 bg-amber-500/10", icon: "↪" },
+  "user.sessions_revoked": { label: "Sitzungen beendet", tone: "text-amber-700 bg-amber-500/10", icon: "↪" },
 };
 
 function actionDisplay(action: string) {
   return ACTION_LABELS[action] ?? {
     label: action.replaceAll(".", " · "),
-    tone: "text-zinc-300 bg-zinc-500/10",
+    tone: "text-slate-700 bg-zinc-500/10",
     icon: "•",
   };
 }
@@ -80,16 +80,16 @@ export default async function LogsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white">
+    <main className="min-h-screen bg-slate-50 text-slate-950">
       <Nav />
       <div className="mx-auto max-w-7xl p-5 md:p-8">
         <p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-400">Nachvollziehbarkeit</p>
         <h1 className="mt-2 text-4xl font-black">Ereignisprotokoll</h1>
-        <p className="mt-2 text-zinc-400">Sicherheitsrelevante Änderungen werden dauerhaft mit Zeit und Benutzer gespeichert.</p>
+        <p className="mt-2 text-slate-600">Sicherheitsrelevante Änderungen werden dauerhaft mit Zeit und Benutzer gespeichert.</p>
 
-        <div className="mt-7 overflow-x-auto rounded-2xl border border-zinc-800">
-          <table className="w-full min-w-[850px] text-left text-sm">
-            <thead className="bg-zinc-900 text-zinc-400">
+        <div className="mt-7 gc-table-wrap rounded-2xl border border-slate-200">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-white text-slate-600">
               <tr>
                 <th className="p-4">Zeit</th>
                 <th className="p-4">Benutzer</th>
@@ -104,7 +104,7 @@ export default async function LogsPage() {
                   const profile = log.actor_user_id ? profilesById.get(log.actor_user_id) : null;
                   const display = actionDisplay(log.action);
                   return (
-                    <tr key={log.id} className="border-t border-zinc-800 bg-zinc-950 hover:bg-zinc-900/60">
+                    <tr key={log.id} className="border-t border-slate-200 bg-slate-50 hover:bg-white/60">
                       <td className="p-4 whitespace-nowrap">{new Date(log.created_at).toLocaleString("de-CH")}</td>
                       <td className="p-4">{profile?.full_name || profile?.email || "System"}</td>
                       <td className="p-4">
@@ -114,15 +114,15 @@ export default async function LogsPage() {
                       </td>
                       <td className="p-4">
                         <div className="font-semibold">{objectLabel(log)}</div>
-                        {log.entity_id && <div className="mt-1 max-w-[260px] truncate font-mono text-xs text-zinc-500" title={log.entity_id}>{log.entity_id}</div>}
+                        {log.entity_id && <div className="mt-1 max-w-[260px] truncate font-mono text-xs text-slate-500" title={log.entity_id}>{log.entity_id}</div>}
                       </td>
                       <td className="p-4">{log.greenhouse_id ? `GH${String(log.greenhouse_id).padStart(2, "0")}` : "—"}</td>
                     </tr>
                   );
                 })
               ) : (
-                <tr className="border-t border-zinc-800 bg-zinc-950">
-                  <td colSpan={5} className="p-8 text-center text-zinc-500">Noch keine Ereignisse vorhanden.</td>
+                <tr className="border-t border-slate-200 bg-slate-50">
+                  <td colSpan={5} className="p-8 text-center text-slate-500">Noch keine Ereignisse vorhanden.</td>
                 </tr>
               )}
             </tbody>
