@@ -10,13 +10,13 @@ async function authorizedClient(greenhouseId: number, write = true) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Nicht angemeldet");
 
-  const query = supabase
+  const { data, error } = await supabase
     .from("greenhouse_users")
     .select("role")
     .eq("greenhouse_id", greenhouseId)
     .eq("user_id", user.id)
     .single();
-  const { data, error } = await query;
+
   if (error || !data) throw new Error("Keine Berechtigung");
   if (write && data.role === "viewer") throw new Error("Nur Lesezugriff");
   return supabase;
@@ -29,40 +29,74 @@ function refresh(greenhouseId: number) {
 
 export async function setAutoMode(greenhouseId: number, enabled: boolean) {
   const supabase = await authorizedClient(greenhouseId);
-  const { error } = await supabase.from("greenhouses").update({ auto_mode: enabled }).eq("id", greenhouseId);
+
+  const values = enabled
+    ? {
+        auto_mode: true,
+        roof_manual_override: false,
+        wall_manual_override: false,
+        watering_manual_override: false,
+      }
+    : { auto_mode: false };
+
+  const { error } = await supabase
+    .from("greenhouses")
+    .update(values)
+    .eq("id", greenhouseId);
+
   if (error) throw new Error(error.message);
   refresh(greenhouseId);
 }
 
 export async function toggleRoofWindow(greenhouseId: number, open: boolean) {
   const supabase = await authorizedClient(greenhouseId);
-  const { error } = await supabase.from("greenhouses").update({ roof_window_target: open, roof_manual_override: true }).eq("id", greenhouseId);
+  const { error } = await supabase
+    .from("greenhouses")
+    .update({ roof_window_target: open, roof_manual_override: true })
+    .eq("id", greenhouseId);
   if (error) throw new Error(error.message);
   refresh(greenhouseId);
 }
 
 export async function toggleWallWindow(greenhouseId: number, open: boolean) {
   const supabase = await authorizedClient(greenhouseId);
-  const { error } = await supabase.from("greenhouses").update({ wall_window_target: open, wall_manual_override: true }).eq("id", greenhouseId);
+  const { error } = await supabase
+    .from("greenhouses")
+    .update({ wall_window_target: open, wall_manual_override: true })
+    .eq("id", greenhouseId);
   if (error) throw new Error(error.message);
   refresh(greenhouseId);
 }
 
 export async function toggleWatering(greenhouseId: number, on: boolean) {
   const supabase = await authorizedClient(greenhouseId);
-  const { data: gh } = await supabase.from("greenhouses").select("temperature,status").eq("id", greenhouseId).single();
+  const { data: gh, error: readError } = await supabase
+    .from("greenhouses")
+    .select("temperature,status")
+    .eq("id", greenhouseId)
+    .single();
+
+  if (readError) throw new Error(readError.message);
+
   if (on && (gh?.status === "frost_protection" || (typeof gh?.temperature === "number" && gh.temperature <= 0))) {
     throw new Error("Frostschutz aktiv: Bewässerung bleibt gesperrt");
   }
-  const { error } = await supabase.from("greenhouses").update({ watering_target: on, watering_manual_override: true }).eq("id", greenhouseId);
+
+  const { error } = await supabase
+    .from("greenhouses")
+    .update({ watering_target: on, watering_manual_override: true })
+    .eq("id", greenhouseId);
   if (error) throw new Error(error.message);
   refresh(greenhouseId);
 }
 
 export async function enableAutomatic(greenhouseId: number, area: "roof" | "wall" | "watering") {
   const supabase = await authorizedClient(greenhouseId);
-  const column = `${area}_manual_override`;
-  const { error } = await supabase.from("greenhouses").update({ [column]: false }).eq("id", greenhouseId);
+  const column = area === "roof" ? "roof_manual_override" : area === "wall" ? "wall_manual_override" : "watering_manual_override";
+  const { error } = await supabase
+    .from("greenhouses")
+    .update({ [column]: false })
+    .eq("id", greenhouseId);
   if (error) throw new Error(error.message);
   refresh(greenhouseId);
 }
@@ -73,22 +107,32 @@ export async function updateGreenhouseSettings(greenhouseId: number, formData: F
   const roofClose = Number(formData.get("roof_temperature_close"));
   const wallOpen = Number(formData.get("wall_temperature_open"));
   const wallClose = Number(formData.get("wall_temperature_close"));
+
+  if (![roofOpen, roofClose, wallOpen, wallClose].every(Number.isFinite)) {
+    throw new Error("Alle Temperaturwerte müssen gültige Zahlen sein");
+  }
   if (!(roofOpen > roofClose && wallOpen > wallClose)) {
     throw new Error("Öffnungstemperatur muss über der Schließtemperatur liegen");
   }
-  const { error } = await supabase.from("greenhouses").update({
-    roof_temperature_open: roofOpen,
-    roof_temperature_close: roofClose,
-    wall_temperature_open: wallOpen,
-    wall_temperature_close: wallClose,
-  }).eq("id", greenhouseId);
+
+  const { error } = await supabase
+    .from("greenhouses")
+    .update({
+      roof_temperature_open: roofOpen,
+      roof_temperature_close: roofClose,
+      wall_temperature_open: wallOpen,
+      wall_temperature_close: wallClose,
+    })
+    .eq("id", greenhouseId);
   if (error) throw new Error(error.message);
   refresh(greenhouseId);
 }
 
 export async function addSchedule(greenhouseId: number) {
   const supabase = await authorizedClient(greenhouseId);
-  const { error } = await supabase.from("watering_schedule").insert({ greenhouse_id: greenhouseId, start_time: "12:00", duration_minutes: 10, enabled: true });
+  const { error } = await supabase
+    .from("watering_schedule")
+    .insert({ greenhouse_id: greenhouseId, start_time: "12:00", duration_minutes: 10, enabled: true });
   if (error) throw new Error(error.message);
   refresh(greenhouseId);
 }
@@ -96,7 +140,19 @@ export async function addSchedule(greenhouseId: number) {
 export async function updateSchedule(greenhouseId: number, formData: FormData) {
   const supabase = await authorizedClient(greenhouseId);
   const id = Number(formData.get("id"));
-  const { error } = await supabase.from("watering_schedule").update({ start_time: formData.get("start_time"), duration_minutes: Number(formData.get("duration_minutes")), enabled: formData.get("enabled") === "on" }).eq("id", id).eq("greenhouse_id", greenhouseId);
+  const startTime = String(formData.get("start_time") ?? "");
+  const durationMinutes = Number(formData.get("duration_minutes"));
+  const enabled = formData.get("enabled") === "on";
+
+  if (!Number.isInteger(id)) throw new Error("Ungültige Zeitplan-ID");
+  if (!startTime) throw new Error("Startzeit fehlt");
+  if (!Number.isFinite(durationMinutes) || durationMinutes < 1) throw new Error("Die Dauer muss mindestens eine Minute betragen");
+
+  const { error } = await supabase
+    .from("watering_schedule")
+    .update({ start_time: startTime, duration_minutes: durationMinutes, enabled })
+    .eq("id", id)
+    .eq("greenhouse_id", greenhouseId);
   if (error) throw new Error(error.message);
   refresh(greenhouseId);
 }
@@ -104,7 +160,13 @@ export async function updateSchedule(greenhouseId: number, formData: FormData) {
 export async function deleteSchedule(greenhouseId: number, formData: FormData) {
   const supabase = await authorizedClient(greenhouseId);
   const id = Number(formData.get("id"));
-  const { error } = await supabase.from("watering_schedule").delete().eq("id", id).eq("greenhouse_id", greenhouseId);
+  if (!Number.isInteger(id)) throw new Error("Ungültige Zeitplan-ID");
+
+  const { error } = await supabase
+    .from("watering_schedule")
+    .delete()
+    .eq("id", id)
+    .eq("greenhouse_id", greenhouseId);
   if (error) throw new Error(error.message);
   refresh(greenhouseId);
 }
@@ -116,10 +178,7 @@ export async function updateNotificationSettings(formData: FormData) {
 
   const emailAddress = String(formData.get("email_address") ?? "").trim().toLowerCase();
   const emailEnabled = formData.get("email_enabled") === "on";
-
-  if (emailEnabled && !emailAddress) {
-    throw new Error("Für E-Mail-Warnungen muss eine Empfängeradresse eingetragen sein");
-  }
+  if (emailEnabled && !emailAddress) throw new Error("Für E-Mail-Warnungen muss eine Empfängeradresse eingetragen sein");
 
   const { error } = await supabase
     .from("notification_settings")
@@ -132,12 +191,9 @@ export async function updateNotificationSettings(formData: FormData) {
       critical_alerts: formData.get("critical_alerts") === "on",
       updated_at: new Date().toISOString(),
     }, { onConflict: "user_id" });
-
   if (error) throw new Error(error.message);
-
   revalidatePath("/notifications");
 }
-
 
 export async function sendTestWarningEmail() {
   const supabase = await createClient();
@@ -150,27 +206,16 @@ export async function sendTestWarningEmail() {
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (error) {
-    redirect(`/notifications?mail=error&message=${encodeURIComponent(error.message)}`);
-  }
-
-  if (!settings?.email_enabled) {
-    redirect("/notifications?mail=disabled");
-  }
+  if (error) redirect(`/notifications?mail=error&message=${encodeURIComponent(error.message)}`);
+  if (!settings?.email_enabled) redirect("/notifications?mail=disabled");
 
   const recipient = settings.email_address || user.email;
-  if (!recipient) {
-    redirect("/notifications?mail=no-recipient");
-  }
-
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    redirect("/notifications?mail=not-configured");
-  }
+  if (!recipient) redirect("/notifications?mail=no-recipient");
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) redirect("/notifications?mail=not-configured");
 
   try {
     const transporter = getMailTransporter();
     await transporter.verify();
-
     await transporter.sendMail({
       from: getMailFrom(),
       to: recipient,
