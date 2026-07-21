@@ -186,3 +186,149 @@ main.min-h-screen .shadow-2xl { box-shadow: var(--gc-shadow); }
   .gc-table-wrap tr { padding: .8rem; border-bottom: 1px solid var(--gc-line); }
   .gc-table-wrap td { padding: .3rem 0; }
 }
+
+/* Compact, consistent sizing for every authenticated page */
+.gc-standard-page,
+main.min-h-screen > .mx-auto {
+  width: min(calc(100% - (2 * var(--gc-page-pad))), var(--gc-page-max)) !important;
+  max-width: var(--gc-page-max) !important;
+  padding: clamp(1.25rem, 2vw, 1.9rem) 0 1.75rem !important;
+  margin-inline: auto;
+}
+main.min-h-screen > .mx-auto > p:first-child,
+.gc-standard-header > p:first-child {
+  font-size: var(--gc-font-xs) !important;
+}
+main.min-h-screen > .mx-auto > h1,
+.gc-standard-header h1 {
+  font-size: var(--gc-font-title) !important;
+  line-height: 1.08;
+}
+main.min-h-screen > .mx-auto > p.text-slate-600,
+.gc-standard-header > p.text-slate-600 {
+  font-size: var(--gc-font-sm) !important;
+}
+main.min-h-screen .text-4xl { font-size: var(--gc-font-title) !important; }
+main.min-h-screen .text-3xl { font-size: clamp(1.45rem, 1.7vw, 1.8rem) !important; }
+main.min-h-screen .text-2xl { font-size: clamp(1.15rem, 1.35vw, 1.45rem) !important; }
+main.min-h-screen .text-xl { font-size: clamp(1rem, 1.15vw, 1.2rem) !important; }
+main.min-h-screen .p-6 { padding: clamp(1rem, 1.35vw, 1.35rem) !important; }
+main.min-h-screen .p-5 { padding: var(--gc-card-pad) !important; }
+main.min-h-screen .mt-7 { margin-top: clamp(1.15rem, 1.7vw, 1.55rem) !important; }
+main.min-h-screen .mt-6 { margin-top: clamp(1rem, 1.5vw, 1.35rem) !important; }
+main.min-h-screen .gap-4 { gap: var(--gc-grid-gap) !important; }
+
+/* Exactly three greenhouse cards on laptops/desktops, two on tablets, one on phones */
+.gc-greenhouse-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* Device management */
+.gc-register-device form { align-items: end; }
+.gc-primary-button {
+  width: fit-content;
+  min-height: 2.8rem;
+  border: 0;
+  border-radius: var(--gc-radius-md);
+  background: var(--gc-green-700);
+  color: white;
+  padding-inline: 1.15rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.gc-primary-button:hover { background: var(--gc-green-800); }
+.gc-device-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gc-grid-gap);
+  align-items: start;
+}
+.gc-device-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 23rem;
+  padding: var(--gc-card-pad);
+  border: 1px solid var(--gc-line);
+  border-radius: var(--gc-radius-lg);
+  background: var(--gc-surface);
+  box-shadow: var(--gc-shadow);
+}
+.gc-device-card.has-new-secret { border-color: #e0b43b; }
+.gc-device-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; }
+.gc-device-greenhouse { margin: 0; color: var(--gc-muted); font-size: var(--gc-font-xs); }
+.gc-device-card-head h2 { margin: .25rem 0 0; font-size: var(--gc-font-lg); line-height: 1.15; font-weight: 800; }
+.gc-device-status { flex: 0 0 auto; border-radius: 999px; padding: .38rem .65rem; font-size: var(--gc-font-xs); font-weight: 800; }
+.gc-device-status.online { color: #087a48; background: #e5f5e9; }
+.gc-device-status.offline { color: #a64a00; background: #ffebcd; }
+.gc-device-status.disabled { color: #bd1d2b; background: #ffe8eb; }
+.gc-device-secret {
+  margin-top: 1rem;
+  padding: .85rem;
+  border: 1px solid #efc44b;
+  border-radius: var(--gc-radius-md);
+  background: #fff9e8;
+}
+.gc-device-secret strong { color: #8e4200; font-size: var(--gc-font-sm); }
+.gc-device-secret p { margin: .2rem 0 .7rem; color: #9b5b20; font-size: var(--gc-font-xs); }
+.gc-device-secret code {
+  display: block;
+  width: 100%;
+  padding: .65rem;
+  border-radius: var(--gc-radius-sm);
+  background: #e9f8f1;
+  color: #7c3700;
+  font-size: var(--gc-font-xs);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.gc-device-details { margin: 1.1rem 0 0; display: grid; gap: .8rem; font-size: var(--gc-font-sm); }
+.gc-device-details > div { display: grid; grid-template-columns: 7rem minmax(0, 1fr); align-items: center; gap: .55rem; }
+.gc-device-details dt { color: var(--gc-muted); }
+.gc-device-details dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.gc-device-id-row { grid-template-columns: 5.8rem minmax(0, 1fr) auto !important; }
+.gc-device-id-row dd { text-align: left; }
+.gc-device-id-row code { font-size: var(--gc-font-xs); word-break: break-all; }
+.gc-copy-button {
+  min-height: 2rem;
+  border: 1px solid #ccd9d2;
+  border-radius: var(--gc-radius-sm);
+  background: white;
+  padding: .35rem .6rem;
+  color: var(--gc-text);
+  font-size: var(--gc-font-xs);
+  font-weight: 750;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.gc-copy-button:hover { background: #f3f7f5; }
+.gc-copy-button-secret { width: 100%; margin-top: .55rem; border-color: #b8d9c9; color: #08734a; }
+.gc-device-actions { margin-top: auto; padding-top: 1.1rem; display: flex; flex-wrap: wrap; gap: .5rem; }
+.gc-device-action {
+  min-height: 2.35rem;
+  border: 1px solid #cfdad4;
+  border-radius: var(--gc-radius-sm);
+  background: white;
+  padding: .45rem .7rem;
+  color: var(--gc-text);
+  font-size: var(--gc-font-xs);
+  font-weight: 750;
+  cursor: pointer;
+}
+.gc-device-action:hover { background: #f4f7f5; }
+.gc-device-action-warning { border-color: #e8b174; color: #a64a00; }
+.gc-device-action-positive { border-color: #8dcdb0; color: #08734a; }
+.gc-device-action-danger { border-color: #f2a1a9; color: #c51f30; }
+
+@media (max-width: 58rem) {
+  .gc-greenhouse-grid,
+  .gc-device-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 44rem) {
+  .gc-greenhouse-grid,
+  .gc-device-grid { grid-template-columns: 1fr; }
+  .gc-device-card { min-height: auto; }
+  .gc-device-details > div,
+  .gc-device-id-row { grid-template-columns: 1fr !important; align-items: start; }
+  .gc-device-details dd { text-align: left; }
+  .gc-copy-button { width: 100%; }
+  .gc-register-device form { grid-template-columns: 1fr; }
+  .gc-primary-button { width: 100%; }
+}
