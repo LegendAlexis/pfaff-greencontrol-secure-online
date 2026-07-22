@@ -189,20 +189,15 @@ export async function POST(request: NextRequest) {
         .update(greenhouseUpdate)
         .eq("id", device.greenhouse_id)
         .select(
-          [
-            "id",
-            "auto_mode",
-            "roof_window_target",
-            "wall_window_target",
-            "watering_target",
-            "roof_manual_override",
-            "wall_manual_override",
-            "watering_manual_override",
-          ].join(","),
+          "id,auto_mode,roof_window_target,wall_window_target,watering_target,roof_manual_override,wall_manual_override,watering_manual_override",
         )
         .single();
 
     if (greenhouseError) throw greenhouseError;
+
+    if (!greenhouse) {
+  throw new Error("Gewächshaus nicht gefunden");
+}
 
     const { error: sensorError } = await admin
       .from("sensor_readings")
