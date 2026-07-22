@@ -31,8 +31,20 @@ export async function inviteUser(formData: FormData) {
     redirectTo,
     data: { full_name: fullName || email },
   });
-  if (error) throw new Error(error.message);
-  if (!data.user) throw new Error("Einladung konnte nicht erstellt werden");
+if (error) {
+  console.error("Fehler beim Einladen:", error);
+
+  const message =
+    error.message.toLowerCase().includes("rate limit")
+      ? "Das E-Mail-Limit wurde erreicht. Bitte später erneut versuchen."
+      : `Einladung fehlgeschlagen: ${error.message}`;
+
+  redirect(`/users?error=${encodeURIComponent(message)}`);
+}
+
+if (!data.user) {
+  redirect("/users?error=Einladung%20konnte%20nicht%20erstellt%20werden");
+}
 
   const { error: profileError } = await admin.from("profiles").upsert({
     id: data.user.id,
@@ -143,7 +155,16 @@ export async function resendInvitation(formData: FormData) {
   const admin = createAdminClient();
   const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/auth/confirm?next=/update-password`;
   const { error } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo });
-  if (error) throw new Error(error.message);
+  if (error) {
+  console.error("Fehler beim erneuten Senden:", error);
+
+  const message =
+    error.message.toLowerCase().includes("rate limit")
+      ? "Das E-Mail-Limit wurde erreicht. Bitte später erneut versuchen."
+      : `Einladung konnte nicht erneut gesendet werden: ${error.message}`;
+
+  redirect(`/users?error=${encodeURIComponent(message)}`);
+}
   await writeAuditLog({ actorUserId: actor.id, action: "user.invitation_resent", entityType: "user", metadata: { email } });
   redirect("/users?message=Einladung%20erneut%20gesendet");
 }
