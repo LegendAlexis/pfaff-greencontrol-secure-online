@@ -1,5 +1,8 @@
-import { createHash, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  isAuthorizedDevice,
+  readDeviceCredentials,
+} from "../../../../lib/domain/device-auth";
 import {
   evaluateWateringDecision,
   type WateringSchedule,
@@ -15,20 +18,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const TIME_ZONE = "Europe/Zurich";
-
-function digest(value: string) {
-  return createHash("sha256").update(value).digest();
-}
-
-function equalSecret(secret: string, hashHex: string) {
-  const supplied = digest(secret);
-  const stored = Buffer.from(hashHex, "hex");
-
-  return (
-    supplied.length === stored.length &&
-    timingSafeEqual(supplied, stored)
-  );
-}
 
 function getCurrentMinutesInZurich(date: Date) {
   const parts = new Intl.DateTimeFormat("de-CH", {
@@ -109,15 +98,9 @@ function isScheduleCurrentlyActive(
 
 export async function POST(request: NextRequest) {
   try {
-    const deviceId = request.headers
-      .get("x-device-id")
-      ?.trim();
+    const credentials = readDeviceCredentials(request.headers);
 
-    const deviceSecret = request.headers
-      .get("x-device-secret")
-      ?.trim();
-
-    if (!deviceId || !deviceSecret) {
+    if (!credentials) {
       return NextResponse.json(
         { error: "Gerätezugang fehlt" },
         { status: 401 },
@@ -129,14 +112,13 @@ export async function POST(request: NextRequest) {
     const { data: device, error: deviceError } = await admin
       .from("devices")
       .select("id,greenhouse_id,secret_hash,active")
-      .eq("id", deviceId)
+      .eq("id", credentials.deviceId)
       .maybeSingle();
 
     if (deviceError) throw deviceError;
 
     if (
-      !device?.active ||
-      !equalSecret(deviceSecret, device.secret_hash)
+      !isAuthorizedDevice(device, credentials.deviceSecret)
     ) {
       return NextResponse.json(
         { error: "Gerät nicht autorisiert" },
