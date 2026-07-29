@@ -2,6 +2,10 @@ import { redirect } from "next/navigation";
 import { createClient } from "../../lib/supabase/server";
 import Nav from "../components/nav";
 
+type TemperatureReading = {
+  temperature: number | string | null;
+};
+
 function Sparkline({ values }: { values: number[] }) {
   if (values.length < 2) return <div className="flex h-48 items-center justify-center text-slate-500">Noch keine Verlaufsdaten</div>;
   const min = Math.min(...values), max = Math.max(...values), range = max - min || 1;
@@ -14,6 +18,8 @@ export default async function HistoryPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
   const { data: rows } = await supabase.from("sensor_readings").select("temperature,created_at,greenhouse_id").order("created_at", { ascending: true }).limit(96);
-  const temps = (rows ?? []).map((r: any) => Number(r.temperature)).filter(Number.isFinite);
+  const temps = ((rows ?? []) as TemperatureReading[])
+    .map((reading) => Number(reading.temperature))
+    .filter(Number.isFinite);
   return <main className="min-h-screen bg-slate-50 text-slate-950"><Nav /><div className="mx-auto max-w-7xl p-5 md:p-8"><p className="text-sm font-bold uppercase tracking-[0.2em] text-emerald-400">Historie</p><h1 className="mt-2 text-4xl font-black">Diagramme</h1><p className="mt-2 text-slate-600">Temperaturverlauf und später weitere Betriebsdaten.</p><section className="mt-7 rounded-2xl border border-slate-200 bg-white p-6"><div className="flex items-end justify-between gap-4"><div><p className="text-slate-600">Innenraumtemperatur</p><h2 className="text-2xl font-bold">Letzte Messungen</h2></div><span className="rounded-full bg-slate-100 px-3 py-1 text-sm">24 Stunden</span></div><div className="mt-5"><Sparkline values={temps} /></div></section></div></main>;
 }

@@ -3,6 +3,7 @@ import { requireManager } from "../../lib/auth/permissions";
 import { createAdminClient } from "../../lib/supabase/admin";
 import { deleteDevice, registerDevice, rotateDeviceSecret, toggleDevice } from "./actions";
 import { CopyDeviceIdButton, CopySecretButton, DeleteDeviceButton } from "./device-controls";
+import { isRecentHeartbeat } from "../../lib/presentation/greenhouse-status";
 
 export default async function DevicesPage({ searchParams }: { searchParams: Promise<{ new_device?: string; secret?: string }> }) {
   const params = await searchParams;
@@ -41,7 +42,7 @@ export default async function DevicesPage({ searchParams }: { searchParams: Prom
 
         <section className="mt-7 gc-device-grid">
           {(devices ?? []).map((device) => {
-            const online = Boolean(device.last_seen) && Date.now() - new Date(device.last_seen!).getTime() < 300000;
+            const online = isRecentHeartbeat(device.last_seen, 300_000);
             const showSecret = Boolean(params.secret && params.new_device === device.id);
             return (
               <article key={device.id} className={`gc-device-card ${showSecret ? "has-new-secret" : ""}`}>
@@ -90,7 +91,7 @@ export default async function DevicesPage({ searchParams }: { searchParams: Prom
                   </form>
                   <form action={deleteDevice}>
                     <input type="hidden" name="device_id" value={device.id} />
-                    <DeleteDeviceButton deviceId={device.id} deviceName={device.name} />
+                    <DeleteDeviceButton deviceName={device.name} />
                   </form>
                 </div>
               </article>

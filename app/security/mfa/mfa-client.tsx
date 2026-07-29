@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 
@@ -26,7 +27,7 @@ export default function MfaClient({ returnTo = "/dashboard" }: { returnTo?: stri
   const verifiedFactors = factors.filter((factor) => factor.status === "verified");
   const needsSessionVerification = verifiedFactors.length > 0 && currentLevel !== "aal2";
 
-  async function loadSecurityState() {
+  const loadSecurityState = useCallback(async () => {
     const [{ data: factorData, error: factorError }, { data: assuranceData, error: assuranceError }] = await Promise.all([
       supabase.auth.mfa.listFactors(),
       supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
@@ -38,11 +39,15 @@ export default function MfaClient({ returnTo = "/dashboard" }: { returnTo?: stri
     setFactors((factorData?.totp ?? []) as Factor[]);
     setCurrentLevel(assuranceData?.currentLevel ?? null);
     setNextLevel(assuranceData?.nextLevel ?? null);
-  }
+  }, [supabase]);
 
   useEffect(() => {
-    void loadSecurityState();
-  }, []);
+    const timeoutId = window.setTimeout(() => {
+      void loadSecurityState();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [loadSecurityState]);
 
   async function startEnrollment() {
     setMessage("");
@@ -213,7 +218,7 @@ export default function MfaClient({ returnTo = "/dashboard" }: { returnTo?: stri
             <li>Scanne den QR-Code.</li>
             <li>Gib den angezeigten sechsstelligen Code ein.</li>
           </ol>
-          <div className="mt-5 w-fit rounded-xl bg-white p-4"><img src={qrCode} alt="MFA QR-Code" className="h-52 w-52" /></div>
+          <div className="mt-5 w-fit rounded-xl bg-white p-4"><Image src={qrCode} alt="MFA QR-Code" width={208} height={208} unoptimized /></div>
           <details className="mt-4 text-sm text-slate-600"><summary>Manuellen Schlüssel anzeigen</summary><code className="mt-2 block break-all rounded-lg bg-emerald-50 p-3">{secret}</code></details>
           <div className="mt-5 flex flex-wrap gap-3">
             <input value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="6-stelliger Code" className="rounded-xl border border-slate-300 bg-slate-50 p-3" />

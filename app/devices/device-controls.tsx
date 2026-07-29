@@ -37,7 +37,7 @@ export function CopySecretButton({ secret }: { secret: string }) {
   return <CopyValueButton value={secret} label="Secret kopieren" className="gc-copy-button-secret" />;
 }
 
-export function DeleteDeviceButton({ deviceId, deviceName }: { deviceId: string; deviceName: string }) {
+export function DeleteDeviceButton({ deviceName }: { deviceName: string }) {
   return (
     <button
       type="submit"

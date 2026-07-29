@@ -16,6 +16,19 @@ import {
 
 const OFFLINE_AFTER_MS = 90_000;
 
+type WateringScheduleRow = {
+  id: number;
+  start_time: string | null;
+  duration_minutes: number;
+  enabled: boolean;
+};
+
+type WarningRow = {
+  id: number;
+  message: string;
+  created_at: string | null;
+};
+
 function getDeviceState(lastSeen?: string | null) {
   if (!lastSeen) return { online: false, label: "Noch kein Signal" };
 
@@ -371,7 +384,7 @@ export default async function GreenhousePage({
           </div>
 
           <div className="mt-4 space-y-3">
-            {(schedules ?? []).map((schedule: any) => (
+            {((schedules ?? []) as WateringScheduleRow[]).map((schedule) => (
               <div key={schedule.id} className="rounded-xl bg-slate-100 p-4">
                 {canWrite ? (
                   <>
@@ -401,7 +414,7 @@ export default async function GreenhousePage({
         <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="text-2xl font-bold">Letzte Warnungen</h2>
           <div className="mt-4 space-y-3">
-            {(warnings ?? []).map((warning: any) => (
+            {((warnings ?? []) as WarningRow[]).map((warning) => (
               <div key={warning.id} className="rounded-xl border border-slate-300 bg-slate-100 p-4">
                 <p className="font-bold">{warning.message}</p>
                 <p className="mt-1 text-sm text-slate-600">

@@ -7,7 +7,28 @@ export const dynamic = "force-dynamic";
 
 const OFFLINE_AFTER_MS = 90_000;
 
-type Greenhouse = Record<string, any>;
+type Greenhouse = {
+  id: number;
+  name?: string | null;
+  role?: string;
+  last_seen?: string | null;
+  temperature?: number | string | null;
+  temperature_close?: number | string | null;
+  temperature_min?: number | string | null;
+  temperature_open?: number | string | null;
+  temperature_max?: number | string | null;
+  watering_on?: boolean | null;
+  watering_running?: boolean | null;
+  watering_active?: boolean | null;
+  warning_active?: boolean | null;
+  status?: string | null;
+  auto_mode?: boolean | null;
+};
+
+type GreenhouseMembership = {
+  role: string;
+  greenhouses: Greenhouse | Greenhouse[] | null;
+};
 
 function getDeviceState(lastSeen?: string | null) {
   if (!lastSeen) return { online: false, label: "Noch kein Signal" };
@@ -73,9 +94,19 @@ export default async function DashboardPage() {
 
   if (error) throw new Error(error.message);
 
-  const greenhouses = (memberships ?? [])
-    .map((membership: any) => ({ ...membership.greenhouses, role: membership.role }))
-    .filter((gh: Greenhouse) => Boolean(gh?.id));
+  const membershipRows = (memberships ?? []) as unknown as
+    GreenhouseMembership[];
+  const greenhouses: Greenhouse[] = membershipRows.flatMap((membership) => {
+    const related = Array.isArray(membership.greenhouses)
+      ? membership.greenhouses
+      : membership.greenhouses
+        ? [membership.greenhouses]
+        : [];
+
+    return related
+      .filter((greenhouse) => Boolean(greenhouse.id))
+      .map((greenhouse) => ({ ...greenhouse, role: membership.role }));
+  });
 
   const onlineCount = greenhouses.filter((gh: Greenhouse) => getDeviceState(gh.last_seen).online).length;
   const wateringCount = greenhouses.filter(isWatering).length;
