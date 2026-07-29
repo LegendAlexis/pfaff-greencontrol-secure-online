@@ -227,3 +227,47 @@ Einheiten:
 Jedes Eingabefeld und jede Anzeige zeigt seine Einheit. Technische Bindings,
 Pins, aktive Logik, Busparameter und Rohwerte erscheinen ausschließlich in der
 Master Platform. Die normale App zeigt nur fachlich notwendige Einstellungen.
+
+## Verbindliche Aktivierungssemantik für Fenster
+
+Die Configuration Engine behandelt Dachfenster und Fensterwand als zwei
+unabhängige Komponenteninstanzen. Der Aktivstatus einer Instanz darf niemals
+implizit auf die andere Instanz übertragen werden.
+
+Für jede Instanz verwaltet die Master Platform getrennt:
+
+- Relaiskanäle für Öffnen und Schließen,
+- `enabled`,
+- Öffnungs- und Schließungstemperatur,
+- maximale Öffnungs- und Schließzeit in Minuten,
+- Sensorbindungen,
+- Wetterregeln,
+- Sicherheits-, Bewegungs- und Fehlerzustand.
+
+`enabled=false` ist ein wirksamer Sicherheitszustand und nicht nur eine
+UI-Einstellung:
+
+1. Beide Richtungsrelais werden AUS gehalten.
+2. Eingehende Fensterbefehle werden ohne Bewegung verworfen.
+3. Wetter- und Temperaturautomationen werden für diese Instanz übersprungen.
+4. Das Gerät meldet `disabled`; die Oberfläche zeigt „Deaktiviert“.
+
+`enabled=true` darf nur in einer neuen, validierten und bestätigten
+Gerätekonfiguration veröffentlicht werden. Voraussetzung sind erfolgreiche
+Hardware-, Kanal-, Sensor- und Safety-Prüfungen. Danach muss die bereits in der
+universellen Firmware enthaltene Fensterfunktion ohne Firmware- oder
+Codeänderung verfügbar werden.
+
+Der Pilot startet zwingend mit zwei getrennten Einträgen:
+
+```json
+[
+  { "component": "roofWindow", "enabled": false },
+  { "component": "wallWindow", "enabled": false }
+]
+```
+
+Die aktuelle Firmware wertet diese dynamische Konfiguration noch nicht aus.
+Bis zur freigegebenen Fenster-Implementierungsphase bleibt deshalb zusätzlich
+die statische Sperre von CH1 bis CH4 bestehen. Die Sperre ist eine temporäre
+Baseline und kein Bestandteil des endgültigen Konfigurationsmodells.

@@ -100,3 +100,37 @@ Der Modus ist orthogonal zum Bewegungszustand:
 - `automatic`: Wetter- und Temperaturentscheidungen
 
 Lokale Safety gilt in beiden Modi.
+
+## Fensteraktivierung im Komponentenlebenszyklus
+
+Dachfenster und Fensterwand durchlaufen den Lebenszyklus vollständig getrennt.
+Eine verifizierte Dachfensterkomponente berechtigt nicht zur Aktivierung der
+Fensterwand und umgekehrt.
+
+Der Pilotzustand beider Komponenten ist `disabled`:
+
+- `roofWindow.enabled=false`
+- `wallWindow.enabled=false`
+
+Im Zustand `disabled` bleiben beide Richtungsrelais der jeweiligen Komponente
+AUS, Befehle werden ignoriert, Automationen laufen nicht und der gemeldete
+Status ist „Deaktiviert“.
+
+Der Übergang von `verified` über `enabled` nach `active` benötigt pro
+Fensterkomponente:
+
+1. bestätigte Relaisbindings,
+2. geprüfte Sensoren beziehungsweise dokumentierte zeitbasierte Führung,
+3. gültige Öffnungs- und Schließungstemperaturen,
+4. getrennte maximale Laufzeiten in Minuten,
+5. geprüfte Wetterregeln,
+6. bestandene Verriegelungs-, Endschalter-, Timeout- und Not-Aus-Tests,
+7. eine veröffentlichte und vom Gerät bestätigte Konfiguration.
+
+Nach erfolgreicher Prüfung aktiviert die Master Platform die bereits in der
+universellen Firmware vorhandene Komponentenlogik. Dafür darf keine
+Firmware- oder Codeänderung notwendig sein.
+
+Die heutige statische CH1-bis-CH4-Sperre bleibt bis zur separat freigegebenen
+Implementierung und Verifikation dieser dynamischen Lebenszyklussteuerung
+unverändert. Sie ist nur eine sichere Übergangsbaseline.

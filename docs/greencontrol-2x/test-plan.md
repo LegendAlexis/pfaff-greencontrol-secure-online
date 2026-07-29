@@ -165,6 +165,42 @@ nachweislich funktionierende Funktionen angelegt:
 
 Fenster sind ausdrücklich nicht Teil dieser bestehenden Funktionsbaseline.
 
+### Übergang von statischer Sperre zu dynamischer Fensteraktivierung
+
+Die Tests müssen zwei zeitlich getrennte Sicherheitsstufen unterscheiden.
+
+Aktuelle Baseline, bis zur freigegebenen Fenster-Implementierungsphase:
+
+- CH1 bis CH4 sind statisch blockiert.
+- Kein Fensterbefehl darf eine Bewegung auslösen.
+- Die bestehende Fensterlogik ist keine positive Funktionsreferenz.
+- Die Sperre darf vor Implementierung und vollständiger Freigabe nicht
+  gelockert werden.
+
+Zieltests der späteren universellen Fensterimplementierung:
+
+- Dachfenster und Fensterwand sind getrennte Komponenten.
+- Pilotstart setzt beide Komponenten auf `enabled=false`.
+- Bei `enabled=false` bleiben beide Richtungsrelais AUS.
+- Bei `enabled=false` werden Befehle sowie Wetter- und
+  Temperaturautomationen ignoriert.
+- Bei `enabled=false` wird der Status „Deaktiviert“ gemeldet und angezeigt.
+- Die Aktivierung einer Komponente verändert den Zustand der anderen nicht.
+- `enabled=true` wird ohne bestandene Hardware-, Binding-, Sensor- und
+  Safety-Prüfung abgelehnt.
+- Nach gültiger Aktivierung ist die vollständige konfigurierte Fensterlogik
+  ohne Firmware- oder Codeänderung verfügbar.
+- Relaiskanäle, Temperaturen, Laufzeiten in Minuten, Sensoren, Wetterregeln und
+  Sicherheitszustände werden je Komponente getrennt validiert.
+- Ein Wechsel zurück zu `enabled=false` stoppt eine laufende Bewegung und
+  bestätigt beide Relais als AUS.
+- Neustart, Konfigurationsrollback und Kommunikationsausfall dürfen eine
+  deaktivierte Komponente niemals implizit aktivieren.
+
+Die spätere Ablösung der statischen CH1-bis-CH4-Sperre ist erst zulässig, wenn
+alle dynamischen Aktivierungs-, Safety-, Zustands- und Rollbacktests bestanden
+sind.
+
 ### Einheiten und UI-Trennung
 
 - jedes numerische Fachfeld zeigt eine Einheit

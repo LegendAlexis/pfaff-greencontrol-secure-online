@@ -71,3 +71,34 @@ Bis dahin bleiben Dachfenster und Fensterwand deaktiviert.
 Bei Abnahmefehlern werden neue Komponenten deaktiviert, alle Aktoren sicher
 ausgeschaltet und die letzte bestätigte Konfiguration wiederhergestellt. Kein
 Schema- oder Auth-Rollback darf produktive Daten verlieren.
+
+## Verbindlicher Fensterfahrplan für den Pilotbetrieb
+
+Der Pilot legt Dachfenster und Fensterwand als getrennte Komponenten an, aber
+aktiviert sie zunächst nicht:
+
+- Dachfenster: `enabled=false`
+- Fensterwand: `enabled=false`
+
+Damit gilt pro Komponente:
+
+- beide Richtungsrelais sicher AUS,
+- Fensterbefehle ohne Bewegung ignorieren,
+- keine Wetter- oder Temperaturautomatik,
+- sichtbarer Status „Deaktiviert“.
+
+Die universelle GreenControl-2.x-Firmware soll beide Komponenten später
+vollständig unterstützen. Eine Aktivierung über die Master Platform darf erst
+nach separater Hardware- und Sicherheitsabnahme erfolgen und soll keine
+Firmware- oder Codeänderung benötigen.
+
+Dachfenster und Fensterwand werden unabhängig geprüft und konfiguriert. Jede
+Komponente besitzt eigene Relaiskanäle, Aktivstatus, Öffnungs- und
+Schließungstemperaturen, Öffnungs- und Schließzeiten in Minuten,
+Sensorbindungen, Wetterregeln und Sicherheitszustände. Die Freigabe einer
+Komponente gibt die andere nicht frei.
+
+Bis zur gesondert freigegebenen Fenster-Implementierungs- und Abnahmephase
+bleibt die heutige statische Sperre von CH1 bis CH4 unverändert. Sie ist
+ausschließlich die sichere Pilot- und Entwicklungsbaseline, nicht die
+endgültige Fensterarchitektur.

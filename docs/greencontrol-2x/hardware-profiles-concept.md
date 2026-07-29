@@ -66,3 +66,35 @@ Eine spätere Architekturphase legt fest:
 
 Bis dahin bleibt `firmware/current/` unverändert und das hier beschriebene
 Profil rein dokumentarisch.
+
+## Fensterfähigkeit und Komponentenaktivierung
+
+Ein Hardwareprofil beschreibt, ob und wie die Hardware Dachfenster und
+Fensterwand technisch unterstützen kann. Es aktiviert die Komponenten nicht
+selbst. Hardwarefähigkeit und betrieblicher Aktivstatus bleiben getrennte
+Konzepte:
+
+- Das Hardwareprofil beschreibt verfügbare Relaiskanäle, aktive Logik,
+  Sensoranschlüsse, Endschalter und Sicherheitsgrenzen.
+- Die Master-Platform-Konfiguration verwaltet `enabled` und die
+  betriebsspezifischen Regeln jeder Komponenteninstanz.
+- Die universelle Firmware enthält die technisch vollständige Fensterlogik.
+
+Dachfenster und Fensterwand erhalten getrennte Profilbindungen für:
+
+- Öffnungs- und Schließrelais,
+- optionale beziehungsweise verpflichtende Sensoren,
+- Endschalter,
+- maximale Laufzeiten und lokale Safety-Fähigkeiten.
+
+Der Pilot verwendet zunächst für beide Komponenten `enabled=false`. In diesem
+Zustand bleiben die jeweiligen Richtungsrelais AUS, Fensterbefehle und
+Automationen sind wirkungslos und der Status lautet „Deaktiviert“. Eine spätere
+Aktivierung erfolgt ausschließlich durch eine validierte Master-Platform-
+Konfiguration nach erfolgreicher Hardware- und Sicherheitsprüfung; ein
+Firmwarefork ist nicht vorgesehen.
+
+Die Phase-1B-/1C-Baseline blockiert CH1 bis CH4 statisch. Diese Sperre ist kein
+Zielmerkmal des Hardwareprofils. Sie wird erst in einer später freigegebenen
+Fenster-Implementierungsphase durch die dynamische, komponentenbezogene
+`enabled`-Auswertung ersetzt und bleibt bis dahin unverändert.

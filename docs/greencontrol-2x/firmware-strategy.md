@@ -104,3 +104,38 @@ funktionale Referenz. Er wird in Phase 0.5 weder kopiert noch verändert.
 Seine Fensterlogik ist davon ausgenommen: Referenzfunktionen sind nur
 Temperatur/GPIO21, Temperaturanzeige, Bewässerung, Zeitpläne einschließlich
 Mitternacht, Frostschutz, Heartbeat und Bewässerungs-Istzustand.
+
+## Verbindliche Fenster-Zielarchitektur und Übergangsregel
+
+Die heutige statische Sperre von CH1 bis CH4 ist ausschließlich eine sichere
+Entwicklungs- und Regression-Baseline. Sie ist ausdrücklich nicht die
+endgültige Fensterarchitektur.
+
+Die universelle GreenControl-2.x-Firmware soll Dachfenster und Fensterwand
+technisch vollständig unterstützen. Beide werden als getrennte Komponenten in
+derselben universellen Firmware bereitgestellt und über eine bestätigte
+Konfiguration der Master Platform unabhängig voneinander aktiviert oder
+deaktiviert. Eine spätere Aktivierung darf weder einen Firmwarefork noch eine
+Codeänderung erfordern.
+
+Für den Pilotbetrieb gilt zunächst:
+
+- Dachfenster: `enabled=false`
+- Fensterwand: `enabled=false`
+
+Bei `enabled=false` bleiben beide Richtungsrelais der jeweiligen Komponente
+sicher AUS, Fensterbefehle werden ignoriert, Wetter- und
+Temperaturautomationen werden nicht ausgeführt und der Komponentenstatus lautet
+`disabled` beziehungsweise „Deaktiviert“.
+
+Bei `enabled=true` wird die vollständige konfigurierte Fensterlogik der
+betreffenden Komponente verfügbar. Die Master Platform darf diese
+Konfiguration erst nach erfolgreicher Hardware-, Binding- und
+Sicherheitsprüfung veröffentlichen. Dachfenster und Fensterwand besitzen
+jeweils eigene Relaiskanäle, Aktivstatus, Öffnungs- und
+Schließungstemperaturen, Laufzeiten in Minuten, Sensorbindungen, Wetterregeln
+und Sicherheitszustände.
+
+Bis eine gesondert freigegebene Fenster-Implementierungsphase diese dynamische
+`enabled`-Auswertung implementiert und vollständig testet, bleibt die
+statische CH1-bis-CH4-Sperre unverändert bestehen.
