@@ -7,7 +7,29 @@
   "legacySourceExcluded": "waveshare_greenhouse_frost_safe.ino",
   "hardware": {
     "boardFamily": "Waveshare ESP32-S3-ETH-8DI-8RO",
-    "fqbn": "unknown",
+    "fqbn": "esp32:esp32:esp32s3",
+    "boardProfile": "ESP32S3 Dev Module",
+    "boardProfileEvidence": "last locally stored Arduino IDE profile",
+    "boardOptionsSource": "locally resolved defaults; no stored overrides found",
+    "boardOptions": {
+      "UploadSpeed": "921600",
+      "USBMode": "hwcdc",
+      "CDCOnBoot": "default",
+      "MSCOnBoot": "default",
+      "DFUOnBoot": "default",
+      "UploadMode": "default",
+      "CPUFreq": "240",
+      "FlashMode": "qio",
+      "FlashSize": "4M",
+      "PartitionScheme": "default",
+      "DebugLevel": "none",
+      "PSRAM": "disabled",
+      "LoopCore": "1",
+      "EventsCore": "1",
+      "EraseFlash": "none",
+      "JTAGAdapter": "default",
+      "ZigbeeMode": "default"
+    },
     "temperatureSensor": "DS18B20",
     "temperatureDataPin": 21,
     "wateringPhysicalChannel": "CH5",
@@ -18,8 +40,10 @@
   },
   "toolchain": {
     "buildTool": "arduino-cli",
-    "arduinoCliVersion": "unknown",
-    "esp32CoreVersion": "unknown"
+    "arduinoIdeVersion": "2.3.10",
+    "arduinoCliVersion": "1.5.1",
+    "arduinoCliSource": "bundled with local Arduino IDE",
+    "esp32CoreVersion": "3.3.10"
   },
   "libraries": [
     { "name": "ArduinoJson", "version": "7.4.3", "source": "locally-observed" },
@@ -41,12 +65,20 @@
       "*.ino.elf",
       "*.ino.map"
     ],
-    "status": "blocked",
-    "blockers": [
-      "arduino-cli version is unknown and executable is not available on PATH",
-      "verified FQBN is unknown",
-      "ESP32 core version is unknown"
-    ]
+    "verifiedCommand": "compile-current.ps1 -Fqbn esp32:esp32:esp32s3 -ArduinoCli <LOCAL_ARDUINO_IDE_ARDUINO_CLI_PATH>",
+    "status": "passed",
+    "verifiedOn": "2026-07-29",
+    "result": {
+      "exitCode": 0,
+      "programBytes": 1058005,
+      "programMaximumBytes": 1310720,
+      "programPercent": 80,
+      "globalVariableBytes": 47524,
+      "dynamicMemoryMaximumBytes": 327680,
+      "dynamicMemoryPercent": 14,
+      "dynamicMemoryRemainingBytes": 280156
+    },
+    "blockers": []
   },
   "versionEvidence": {
     "baselineFolderVersion": "1.3.1",
