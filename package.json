@@ -8,10 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:unit && npm run test:integration && npm run test:firmware",
+    "test": "npm run test:unit && npm run test:integration && npm run test:firmware && npm run test:migration",
     "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/unit/*.test.ts",
     "test:integration": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/integration/*.test.ts",
-    "test:firmware": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/firmware/*.test.ts"
+    "test:firmware": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/firmware/*.test.ts",
+    "test:migration": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/migration/*.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
