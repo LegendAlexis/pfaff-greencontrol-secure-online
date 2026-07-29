@@ -1,5 +1,9 @@
 import { createHash, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  evaluateWateringDecision,
+  type WateringSchedule,
+} from "../../../../lib/domain/watering";
 import { createAdminClient } from "../../../../lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -219,6 +223,7 @@ export async function POST(request: NextRequest) {
     if (sensorError) throw sensorError;
 
     let scheduleActive = false;
+    let schedulesForDecision: WateringSchedule[] = [];
 
     // Nur bei ausgeschaltetem manuellen Override wird der
     // Bewässerungszeitplan geprüft.
@@ -232,13 +237,16 @@ export async function POST(request: NextRequest) {
 
       if (scheduleError) throw scheduleError;
 
-      const currentMinutes =
-        getCurrentMinutesInZurich(nowDate);
+      schedulesForDecision = (schedules ?? []).map((schedule) => ({
+        start_time: String(schedule.start_time),
+        duration_minutes: Number(schedule.duration_minutes),
+      }));
 
-      scheduleActive = (schedules ?? []).some((schedule) =>
+      const currentMinutes = getCurrentMinutesInZurich(nowDate);
+      scheduleActive = schedulesForDecision.some((schedule) =>
         isScheduleCurrentlyActive(
-          String(schedule.start_time),
-          Number(schedule.duration_minutes),
+          schedule.start_time,
+          schedule.duration_minutes,
           currentMinutes,
         ),
       );
@@ -262,6 +270,23 @@ export async function POST(request: NextRequest) {
       // Automatik:
       // Der aktive Zeitplan entscheidet.
       effectiveWateringTarget = scheduleActive;
+    }
+
+    const testedDecision = evaluateWateringDecision({
+      wateringManualOverride: greenhouse.watering_manual_override === true,
+      wateringTarget: greenhouse.watering_target === true,
+      schedules: schedulesForDecision,
+      now: nowDate,
+      status,
+      temperature,
+    });
+
+    if (
+      testedDecision.scheduleActive !== scheduleActive ||
+      testedDecision.frostProtectionActive !== frostProtectionActive ||
+      testedDecision.effectiveTarget !== effectiveWateringTarget
+    ) {
+      throw new Error("Bewässerungsentscheidung ist inkonsistent");
     }
 
     return NextResponse.json({
