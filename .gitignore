@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local firmware configuration (never commit secrets)
+**/GCConfig.h
+!**/GCConfig.example.h
+
+# local firmware build artifacts
+/firmware/.build/
+/firmware/build/
+/firmware/artifacts/
+*.bin
+*.elf
+*.map
+*.hex
