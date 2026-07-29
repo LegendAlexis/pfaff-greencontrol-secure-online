@@ -4,6 +4,11 @@ import {
   evaluateWateringDecision,
   type WateringSchedule,
 } from "../../../../lib/domain/watering";
+import {
+  createHeartbeatPersistence,
+  normalizeHeartbeat,
+  type HeartbeatBody,
+} from "../../../../lib/domain/heartbeat";
 import { createAdminClient } from "../../../../lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -139,47 +144,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-
-    const temperature =
-      typeof body.temperature === "number" &&
-      body.temperature > -50 &&
-      body.temperature < 80
-        ? body.temperature
-        : null;
-
-    const status =
-      typeof body.status === "string"
-        ? body.status.slice(0, 40)
-        : "online";
+    const body = (await request.json()) as HeartbeatBody;
+    const heartbeat = normalizeHeartbeat(body);
+    const temperature = heartbeat.temperature;
+    const status = heartbeat.status;
 
     const nowDate = new Date();
     const now = nowDate.toISOString();
 
-    const reportedWateringOn =
-      typeof body.watering_on === "boolean"
-        ? body.watering_on
-        : null;
+    const reportedWateringOn = heartbeat.wateringOn;
+    const persistence = createHeartbeatPersistence(
+      heartbeat,
+      device.greenhouse_id,
+      now,
+    );
 
     const { error: updateDeviceError } = await admin
       .from("devices")
-      .update({
-        last_seen: now,
-        firmware_version:
-          typeof body.firmware_version === "string"
-            ? body.firmware_version.slice(0, 40)
-            : null,
-        updated_at: now,
-      })
+      .update(persistence.deviceUpdate)
       .eq("id", device.id);
 
     if (updateDeviceError) throw updateDeviceError;
 
-    const greenhouseUpdate: Record<string, unknown> = {
-      last_seen: now,
-      temperature,
-      status,
-    };
+    const greenhouseUpdate = persistence.greenhouseUpdate;
 
     // Nur den tatsächlichen Zustand der Bewässerung aktualisieren.
     // Dach- und Wandfenster bleiben unangetastet.
@@ -205,20 +192,7 @@ export async function POST(request: NextRequest) {
 
     const { error: sensorError } = await admin
       .from("sensor_readings")
-      .insert({
-        greenhouse_id: device.greenhouse_id,
-        temperature,
-        roof_window_open:
-          typeof body.roof_window_open === "boolean"
-            ? body.roof_window_open
-            : null,
-        wall_window_open:
-          typeof body.wall_window_open === "boolean"
-            ? body.wall_window_open
-            : null,
-        watering_on: reportedWateringOn,
-        created_at: now,
-      });
+      .insert(persistence.sensorReading);
 
     if (sensorError) throw sensorError;
 
