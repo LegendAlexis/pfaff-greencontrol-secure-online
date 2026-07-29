@@ -135,3 +135,29 @@ Tenantdaten werden nicht automatisch durch ein Schema-Rollback gelöscht.
 - Tenant Context im Laufzeitcode
 - Änderungen an Temperatur, Bewässerung, Frostschutz, Heartbeat oder Fenstern
 - Firmwareänderungen
+
+## Phase 2A.2a – sicherer Dry-Run-Rahmen
+
+Vor der Installation der PostgreSQL-Clienttools wird ausschließlich ein
+nicht-ausführbarer Sicherheitsrahmen eingeführt.
+
+`scripts/database/greencontrol-db-safety.ps1`:
+
+- verlangt getrennte Produktions- und Testidentitäten,
+- akzeptiert ausschließlich exakte Allowlist-/Denylist-Treffer,
+- erlaubt Produktion nur für einen Schema-Dump-Plan,
+- erlaubt schreibende Pläne nur für die Testidentität,
+- erzeugt Argumentlisten statt zusammengesetzter Shellbefehle,
+- nimmt kein Passwort als Parameter entgegen,
+- verlangt die interaktive Passwortquelle,
+- beschränkt rohe Schemaexporte auf das Betriebssystem-Tempverzeichnis,
+- beschränkt SQL-Eingaben auf `.sql`-Dateien innerhalb des Repositorys,
+- verweigert in diesem Zwischenstand jeden Aufruf ohne `-DryRun`,
+- besitzt bewusst keinen Ausführungspfad.
+
+`scripts/database/verify-postgres-tools.ps1` prüft vorerst nur, ob `pg_dump`
+und `psql` auffindbar sind. Es startet kein Werkzeug, prüft noch keine Version
+und installiert nichts.
+
+Phase 2A.2a bleibt offen, bis die Clienttools nach separater Freigabe
+installiert und ihre Versionen ausschließlich lokal geprüft wurden.
