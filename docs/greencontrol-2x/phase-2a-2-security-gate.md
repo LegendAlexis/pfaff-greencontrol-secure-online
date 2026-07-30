@@ -99,14 +99,68 @@ Minimale Härtung im Draft:
 - Unit-Tests: 15/15 bestanden.
 - Integrationstests: 10/10 bestanden.
 - Firmwaretests: 7/7 bestanden.
-- Migrationstests: 19/19 bestanden, davon 3 neue Security-Gate-Tests.
-- Gesamt: 51/51 Tests bestanden.
+- Migrationstests: 23/23 bestanden, davon 7 Security-Gate-Tests.
+- Gesamt: 55/55 Tests bestanden.
 - `git diff --check`: bestanden.
 
 Der Produktions-Build wurde nicht ausgeführt. Ein Next.js-Build kann
 `.env.local` laden und Build-Time-Code starten. Das wäre mit dem
 verbindlichen Verbot, `.env.local` zu lesen oder produktive Systeme zu
 kontaktieren, in dieser Sicherheitsphase nicht zuverlässig vereinbar.
+
+## Validierung in der wegwerfbaren Testinstanz
+
+Status: technisch vorbereitet, noch nicht ausgeführt.
+
+Der Harness `scripts/database/invoke-security-gate-test.ps1` führt genau
+drei Schritte aus:
+
+| Schritt | Erwartetes Verhalten | Tatsächliches Verhalten | Rückfall |
+| --- | --- | --- | --- |
+| Preflight | Testinstanz entspricht der nachgewiesenen verwundbaren Baseline | ausstehend | keine Änderung; nur Metadatenabfrage |
+| minimale Härtung | nur Profilgrants und `manual_commands` werden abgesichert | ausstehend | Testinstanz verwerfen und aus der Baseline neu aufbauen |
+| Postflight | privilegierte Profilupdates und öffentlicher Zugriff sind verweigert; fünf Funktionen und zwei Public-Trigger bleiben vorhanden | ausstehend | keine Änderung; nur Metadatenabfrage |
+
+Sicherheitsgrenzen des Harness:
+
+- verweigert Übereinstimmung mit Produktionshost oder
+  Produktions-Project-Ref,
+- verlangt ausdrücklich `-ExecuteOnDisposableTest`,
+- akzeptiert ausschließlich SQL-Dateien im Repository,
+- verwendet ausschließlich den fest definierten Security-Draft,
+- verlangt PostgreSQL Client 17.x,
+- nimmt kein Passwort als Parameter entgegen,
+- lässt `psql` das Passwort interaktiv abfragen,
+- enthält keine Tenant- oder Featuremigration.
+
+Beispiel für die lokale Ausführung; sämtliche Platzhalter müssen mit den
+nicht geheimen Identitäten der beiden Projekte ersetzt werden:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File scripts/database/invoke-security-gate-test.ps1 `
+  -TargetHost "<TEST_HOST>" `
+  -TargetProjectRef "<TEST_PROJECT_REF>" `
+  -ProductionHost "<PRODUCTION_HOST>" `
+  -ProductionProjectRef "<PRODUCTION_PROJECT_REF>" `
+  -DatabaseUser "<TEST_DATABASE_USER>" `
+  -ExecuteOnDisposableTest
+```
+
+Das Testdatenbankpasswort wird ausschließlich in der interaktiven
+`psql`-Abfrage eingegeben. Es darf nicht in Chat, Befehlszeile,
+Repository oder Bericht erscheinen.
+
+Neue statische Validierungstests:
+
+- Ausführung ohne ausdrücklichen Testschalter wird verweigert.
+- Übereinstimmung einer der Produktionsidentitäten wird verweigert.
+- Pre-/Postflight enthalten keine DML, Tenant- oder Featureänderung.
+- Postflight prüft alle drei privilegierten Profilspalten.
+- Postflight prüft RLS, Tabellenrechte, Sequenzrechte und fehlende
+  Allow-Policies für `manual_commands`.
+- Postflight prüft den Fortbestand der fünf Funktionen und zwei
+  Public-Trigger.
 
 ## Abschlussbedingungen
 
