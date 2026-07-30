@@ -18,7 +18,7 @@ select cron.schedule(
     url := 'https://pfaff-greencontrol.vercel.app',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'Authorization', 'Bearer PfaffGreenControl2026Warnsystem529'
+      'Authorization', 'Bearer <ALERT_CRON_SECRET>'
     ),
     body := '{}'::jsonb,
     timeout_milliseconds := 20000

@@ -21,7 +21,7 @@ In `.env.local` ergänzen:
 Server neu starten. Dann in PowerShell testen:
 
 ```powershell
-$headers = @{ Authorization = "Bearer DEIN_ALERT_CRON_SECRET" }
+$headers = @{ Authorization = "Bearer <ALERT_CRON_SECRET>" }
 Invoke-RestMethod -Method Post -Uri "http://localhost:3000/api/alerts/check" -Headers $headers
 ```
 
