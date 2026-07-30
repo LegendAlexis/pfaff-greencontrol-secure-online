@@ -12,10 +12,13 @@ async function draft() {
   return readFile(draftUrl, "utf8");
 }
 
-test("security gate remains a non-production draft", async () => {
+test("security gate remains an identity-gated reference draft", async () => {
   const sql = await draft();
 
-  assert.match(sql, /^-- DRAFT ONLY - DO NOT RUN AGAINST PRODUCTION\./);
+  assert.match(
+    sql,
+    /^-- REFERENCE DRAFT - DO NOT RUN WITHOUT AN EXPLICIT IDENTITY GATE\./,
+  );
   assert.doesNotMatch(
     sql,
     /^\s*(insert|update|delete|truncate)\b/im,
@@ -30,13 +33,9 @@ test("authenticated users cannot update privileged profile columns", async () =>
     sql,
     /revoke update on table public\.profiles from public, anon, authenticated/i,
   );
-  assert.match(
-    sql,
-    /grant update \(full_name\) on table public\.profiles to authenticated/i,
-  );
   assert.doesNotMatch(
     sql,
-    /grant update \([^)]*\b(system_role|is_active|mfa_required)\b/i,
+    /\bgrant\s+update\b/i,
   );
 });
 

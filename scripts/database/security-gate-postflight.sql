@@ -6,6 +6,7 @@ declare
   manual_commands_policies integer;
   required_functions integer;
   required_triggers integer;
+  service_role_explicit_update boolean;
 begin
   select c.relrowsecurity
     into manual_commands_rls
@@ -63,17 +64,14 @@ begin
       'Postflight failed: authenticated retains broad profile UPDATE';
   end if;
 
-  if not pg_catalog.has_column_privilege(
-    'authenticated',
-    'public.profiles',
-    'full_name',
-    'UPDATE'
-  ) then
-    raise exception 'Postflight failed: safe full_name update is absent';
-  end if;
-
   if (
     pg_catalog.has_column_privilege(
+      'authenticated',
+      'public.profiles',
+      'full_name',
+      'UPDATE'
+    )
+    or pg_catalog.has_column_privilege(
       'authenticated',
       'public.profiles',
       'system_role',
@@ -92,7 +90,28 @@ begin
       'UPDATE'
     )
   ) then
-    raise exception 'Postflight failed: privileged profile UPDATE remains';
+    raise exception 'Postflight failed: authenticated profile UPDATE remains';
+  end if;
+
+  select exists (
+    select 1
+      from pg_catalog.pg_class c
+      cross join lateral pg_catalog.aclexplode(c.relacl) acl
+      join pg_catalog.pg_roles r on r.oid = acl.grantee
+     where c.oid = 'public.profiles'::regclass
+       and r.rolname = 'service_role'
+       and acl.privilege_type = 'UPDATE'
+  )
+    into service_role_explicit_update;
+
+  if service_role_explicit_update is distinct from true
+     or not pg_catalog.has_table_privilege(
+       'service_role',
+       'public.profiles',
+       'UPDATE'
+     ) then
+    raise exception
+      'Postflight failed: service_role profile UPDATE is not preserved';
   end if;
 
   if manual_commands_rls is distinct from true then
@@ -175,12 +194,19 @@ select json_build_object(
       'system_role',
       'UPDATE'
     ),
-  'expected_full_name_update', true,
+  'expected_authenticated_full_name_update', false,
   'actual_full_name_update',
     pg_catalog.has_column_privilege(
       'authenticated',
       'public.profiles',
       'full_name',
+      'UPDATE'
+    ),
+  'expected_service_role_profile_update', true,
+  'actual_service_role_profile_update',
+    pg_catalog.has_table_privilege(
+      'service_role',
+      'public.profiles',
       'UPDATE'
     ),
   'expected_manual_commands_rls', true,

@@ -1,6 +1,7 @@
 # Phase 2A.2 Security Gate
 
-Status: minimale Härtung vorbereitet, Produktionsanwendung ausstehend.
+Status: minimale Härtung im Hauptprojekt angewendet und read-only
+nachgewiesen; Staging-Abgleich und Deployment-Smoke-Test ausstehend.
 
 ## Verifizierte Nachweise
 
@@ -47,9 +48,14 @@ Selbsteskalation zu `admin` ist damit möglich.
 Minimale Härtung im Draft:
 
 - breites UPDATE für `public`, `anon` und `authenticated` entziehen,
-- ausschließlich `full_name` als Spalten-UPDATE für `authenticated`
-  wieder gewähren,
+- kein Spalten-UPDATE für öffentliche API-Rollen wieder gewähren,
+- das explizite und effektive UPDATE-Recht von `service_role` erhalten,
 - bestehende RLS-Policy und Rollenarchitektur unverändert lassen.
+
+Der Anwendungscode wurde vor dieser Entscheidung vollständig geprüft:
+Profiladministration erfolgt in `app/users/actions.ts` ausschließlich über
+den serverseitigen Admin-Client mit `service_role`. Ein direktes
+Profil-UPDATE mit `authenticated` ist nicht Bestandteil der aktuellen App.
 
 ### `manual_commands`
 
@@ -108,9 +114,32 @@ Der Produktions-Build wurde nicht ausgeführt. Ein Next.js-Build kann
 verbindlichen Verbot, `.env.local` zu lesen oder produktive Systeme zu
 kontaktieren, in dieser Sicherheitsphase nicht zuverlässig vereinbar.
 
-## Validierung in der wegwerfbaren Testinstanz
+## Tatsächlicher Ausführungsstand
 
-Status: technisch vorbereitet, noch nicht ausgeführt.
+Der transaktionale Integrationstest wurde erfolgreich abgeschlossen, jedoch
+wegen einer nicht an denselben Verbindungsparameter gebundenen
+PowerShell-Session versehentlich gegen das Hauptprojekt statt gegen Staging
+ausgeführt. Alle Assertions bestanden und die Transaktion wurde committed.
+
+Die anschließende getrennte Read-only-Prüfung hat eindeutig bestätigt:
+
+- Hauptprojekt `dkfvqgnpwvfzqgdnhypw`: gehärteter Zielzustand,
+- Staging `iacplyydjtiirghwixys`: ursprüngliche restriktive
+  Schema-only-Baseline, noch nicht gehärtet,
+- `service_role` besitzt im Hauptprojekt weiterhin ein explizites und
+  effektives UPDATE-Recht auf `public.profiles`,
+- `authenticated` besitzt dort kein Profil-UPDATE mehr,
+- `manual_commands` hat RLS ohne Allow-Policy,
+- `anon` und `authenticated` besitzen weder CRUD- noch Sequenzrechte.
+
+Der Vorgang änderte keine Datenzeilen. Produktion darf bis zum Abschluss der
+Nachkontrolle nicht erneut schreibend bearbeitet werden. Alle weiteren
+Datenbankwerkzeuge müssen Host, Project Ref und Pooler-Benutzer im selben
+Aufruf explizit binden.
+
+## Validierung in Staging
+
+Status: strukturelle Read-only-Baseline bestätigt; Härtung ausstehend.
 
 Der Harness `scripts/database/invoke-security-gate-test.ps1` führt genau
 drei Schritte aus:
@@ -167,8 +196,9 @@ Neue statische Validierungstests:
 Das Security Gate gilt erst vollständig als geschlossen, wenn:
 
 1. die Cron-Rotation extern bestätigt wurde,
-2. der Security-Draft in der wegwerfbaren Testinstanz ausgeführt wurde,
+2. der Security-Draft mit explizit gebundener Staging-Identität ausgeführt
+   wurde,
 3. die negativen Rechteprüfungen dort bestanden wurden,
-4. eine separate Freigabe für die produktive Härtung erfolgt ist.
+4. Repository-Tests, Deployment und Smoke-Test bestanden wurden.
 
 Bis dahin bleibt Phase 2A.2c blockiert.

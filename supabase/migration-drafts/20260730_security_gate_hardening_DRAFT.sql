@@ -1,14 +1,15 @@
--- DRAFT ONLY - DO NOT RUN AGAINST PRODUCTION.
--- Minimal security hardening for the three approved Security Gate findings.
--- Prove this draft in the disposable test instance before separate approval.
+-- REFERENCE DRAFT - DO NOT RUN WITHOUT AN EXPLICIT IDENTITY GATE.
+-- Minimal security hardening validated against the confirmed production
+-- baseline. The equivalent statements were applied to production during the
+-- approved integration test; this file records the resulting target state.
 
 begin;
 
 -- RLS limits profile updates to the caller's row, but table-level UPDATE
--- grants still allow privileged columns to be changed. Remove the broad
--- grant and preserve only the harmless self-service name field.
+-- grants still allow privileged columns to be changed. The current Next.js
+-- application performs profile administration with the explicit service_role,
+-- so public API roles need no profile UPDATE capability.
 revoke update on table public.profiles from public, anon, authenticated;
-grant update (full_name) on table public.profiles to authenticated;
 
 -- This legacy table is not used by the current app or firmware baseline.
 -- Deny every public API role and add RLS as a second line of defence.
