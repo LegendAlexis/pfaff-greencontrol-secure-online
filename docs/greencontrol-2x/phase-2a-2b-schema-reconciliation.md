@@ -232,6 +232,17 @@ aber die identitätsbasierte Rollenzuweisung später durch einen expliziten,
 getesteten Administrationspfad ersetzen. Keine Änderung vor Pilot- und
 Auth-Review.
 
+**Verbindliche GreenControl-2.x-Entscheidung:** `handle_new_user()` ist
+in dieser Form eine technische Altlast der bisherigen Architektur. In
+der anonymisierten Staging-Baseline bleibt die Funktion strukturell
+unverändert; ausschließlich die beiden persönlichen E-Mail-Literale
+werden durch synthetische `example.invalid`-Identitäten ersetzt. Im Zuge
+der Multi-Tenant-Migration muss die gesamte Bootstrap-Rollenvergabe
+anhand von E-Mail-Adressen durch das neue Rollen- und Einladungsmodell
+ersetzt werden. Nach Abschluss dieser Migration darf keine produktive
+Rollenvergabe mehr von persönlichen E-Mail-Adressen in Triggerfunktionen
+abhängen.
+
 ### A08 – Zwei DELETE-Policies fehlen im Repository
 
 **Abweichung:** Produktion enthält zusätzlich
