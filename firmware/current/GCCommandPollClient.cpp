@@ -4,6 +4,10 @@
 
 #include "GCConfig.h"
 
+#ifndef GC_COMMAND_DIAGNOSTICS
+#define GC_COMMAND_DIAGNOSTICS 0
+#endif
+
 namespace {
 constexpr size_t MAX_RESPONSE_BYTES = 8192;
 
@@ -21,6 +25,9 @@ void GCCommandPollClient::begin() {
     Serial.println(
       "SICHERHEIT: Command-Poll TLS-Root-CA fehlt oder ist Platzhalter."
     );
+  }
+  else if (GC_COMMAND_DIAGNOSTICS) {
+    Serial.println("C5 TLS CONFIG READY");
   }
 }
 
@@ -102,6 +109,14 @@ GCCommandPollOutcome GCCommandPollClient::poll(
   }
 
   scheduleSuccess(response.pollAfterMs);
+  if (GC_COMMAND_DIAGNOSTICS) {
+    Serial.printf(
+      "C5 POLL OK ack_sent=%u commands=%u next_ms=%lu\n",
+      static_cast<unsigned int>(acknowledgementCount),
+      static_cast<unsigned int>(response.commandCount),
+      response.pollAfterMs
+    );
+  }
   return GCCommandPollOutcome::Success;
 }
 

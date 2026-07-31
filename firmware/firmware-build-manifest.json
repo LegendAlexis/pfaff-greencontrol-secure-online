@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "phase-1b-baseline",
+  "status": "c5.1-conditional-flash-candidate",
   "architectureFinal": false,
   "sourceDirectory": "firmware/current",
   "entrySketch": "firmware/current/Pfaff_GreenControl_Firmware_v1_3_1_GPIO21_windows_off.ino",
@@ -58,6 +58,7 @@
     "commandTemplate": "arduino-cli compile --fqbn <VERIFIED_FQBN> --build-path <TEMP_BUILD_PATH> <TEMP_SKETCH_PATH>",
     "uploadCommand": null,
     "flashingAllowed": false,
+    "flashGate": "requires-confirmed-staging-identity-root-ca-serial-port-and-safe-ch5-test-load",
     "expectedArtifacts": [
       "*.ino.bin",
       "*.ino.bootloader.bin",
@@ -67,16 +68,16 @@
     ],
     "verifiedCommand": "compile-current.ps1 -Fqbn esp32:esp32:esp32s3 -ArduinoCli <LOCAL_ARDUINO_IDE_ARDUINO_CLI_PATH>",
     "status": "passed",
-    "verifiedOn": "2026-07-29",
+    "verifiedOn": "2026-07-31",
     "result": {
       "exitCode": 0,
-      "programBytes": 1058005,
+      "programBytes": 1082101,
       "programMaximumBytes": 1310720,
-      "programPercent": 80,
-      "globalVariableBytes": 47524,
+      "programPercent": 82,
+      "globalVariableBytes": 47892,
       "dynamicMemoryMaximumBytes": 327680,
       "dynamicMemoryPercent": 14,
-      "dynamicMemoryRemainingBytes": 280156
+      "dynamicMemoryRemainingBytes": 279788
     },
     "blockers": []
   },
@@ -84,6 +85,6 @@
     "baselineFolderVersion": "1.3.1",
     "serialBannerVersion": "1.2.0",
     "consistency": "known-mismatch",
-    "firmwareLogicModified": false
+    "firmwareLogicModified": true
   }
 }

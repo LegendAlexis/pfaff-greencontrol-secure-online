@@ -1,5 +1,11 @@
 #include "GCCommandOrchestrator.h"
 
+#include "GCConfig.h"
+
+#ifndef GC_COMMAND_DIAGNOSTICS
+#define GC_COMMAND_DIAGNOSTICS 0
+#endif
+
 namespace {
 constexpr GCCommandActuator ACTUATORS[] = {
   GCCommandActuator::Watering,
@@ -21,6 +27,9 @@ bool GCCommandOrchestrator::begin(GCRelayBoard& relayBoard) {
   roofWindowController_.begin(relayBoard, stateStore_);
   sideWindowController_.begin(relayBoard, stateStore_);
   pollClient_.begin();
+  if (GC_COMMAND_DIAGNOSTICS) {
+    Serial.println("C5 COMMAND STATE READY");
+  }
   return true;
 }
 
@@ -62,6 +71,12 @@ void GCCommandOrchestrator::update(float temperatureC) {
     Serial.println("FEHLER: Bestaetigte Command-ACKs nicht geloescht.");
     return;
   }
+  if (GC_COMMAND_DIAGNOSTICS && sentAcknowledgementCount > 0) {
+    Serial.printf(
+      "C5 ACK CONFIRMED count=%u\n",
+      static_cast<unsigned int>(sentAcknowledgementCount)
+    );
+  }
 
   for (size_t index = 0; index < response.commandCount; ++index) {
     GCAcknowledgement acknowledgement;
@@ -69,6 +84,14 @@ void GCCommandOrchestrator::update(float temperatureC) {
       Serial.printf(
         "FEHLER: Command fuer %s nicht dauerhaft verarbeitet.\n",
         GCCommandProtocol::actuatorName(response.commands[index].actuator)
+      );
+    }
+    else if (GC_COMMAND_DIAGNOSTICS) {
+      Serial.printf(
+        "C5 COMMAND STORED actuator=%s sequence=%llu status=%s\n",
+        GCCommandProtocol::actuatorName(response.commands[index].actuator),
+        response.commands[index].sequence,
+        acknowledgement.status.c_str()
       );
     }
   }
