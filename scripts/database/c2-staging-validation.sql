@@ -3,20 +3,31 @@
 \echo 'C2 STAGING PHASE 1: READ-ONLY PREFLIGHT'
 begin transaction read only;
 
-select case
-  when current_setting('transaction_read_only') = 'on' then 1
-  else 1 / 0
-end as read_only_gate;
+do $$
+declare
+  actual_read_only text := current_setting('transaction_read_only');
+  actual_database text := current_database();
+begin
+  if actual_read_only <> 'on' then
+    raise exception
+      'C2 READ-ONLY PREFLIGHT FAILED: transaction_read_only expected on, actual %',
+      actual_read_only;
+  end if;
 
-select case
-  when current_database() = 'postgres' then 1
-  else 1 / 0
-end as database_name_gate;
+  if actual_database <> 'postgres' then
+    raise exception
+      'C2 DATABASE PREFLIGHT FAILED: database expected postgres, actual %',
+      actual_database;
+  end if;
 
-select case
-  when to_regclass('public.device_commands') is null then 1
-  else 1 / 0
-end as clean_start_gate;
+  if to_regclass('public.device_commands') is not null then
+    raise exception
+      'C2 CLEAN-START PREFLIGHT FAILED: public.device_commands already exists';
+  end if;
+end
+$$;
+
+\echo 'C2 STAGING PREFLIGHT PASSED'
 
 rollback;
 
@@ -26,71 +37,84 @@ rollback;
 \echo 'C2 STAGING PHASE 3: STRUCTURE AND PRIVILEGE POSTFLIGHT'
 begin transaction read only;
 
-select case
-  when (
-    select count(*)
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'device_commands'
-  ) = 14 then 1
-  else 1 / 0
-end as column_count_gate;
+do $$
+declare
+  actual_column_count bigint;
+  actual_policy_count bigint;
+  actual_rls boolean;
+begin
+  select count(*) into actual_column_count
+  from information_schema.columns
+  where table_schema = 'public'
+    and table_name = 'device_commands';
 
-select case
-  when (
-    select relation.relrowsecurity
-    from pg_catalog.pg_class relation
-    join pg_catalog.pg_namespace namespace
-      on namespace.oid = relation.relnamespace
-    where namespace.nspname = 'public'
-      and relation.relname = 'device_commands'
-  ) then 1
-  else 1 / 0
-end as rls_gate;
+  if actual_column_count <> 14 then
+    raise exception
+      'C2 STRUCTURE POSTFLIGHT FAILED: expected 14 columns, actual %',
+      actual_column_count;
+  end if;
 
-select case
-  when (
-    select count(*)
-    from pg_catalog.pg_policies
-    where schemaname = 'public'
-      and tablename = 'device_commands'
-  ) = 0 then 1
-  else 1 / 0
-end as no_policy_gate;
+  select relation.relrowsecurity into actual_rls
+  from pg_catalog.pg_class relation
+  join pg_catalog.pg_namespace namespace
+    on namespace.oid = relation.relnamespace
+  where namespace.nspname = 'public'
+    and relation.relname = 'device_commands';
 
-select case
-  when not has_table_privilege(
+  if actual_rls is distinct from true then
+    raise exception
+      'C2 RLS POSTFLIGHT FAILED: expected true, actual %',
+      actual_rls;
+  end if;
+
+  select count(*) into actual_policy_count
+  from pg_catalog.pg_policies
+  where schemaname = 'public'
+    and tablename = 'device_commands';
+
+  if actual_policy_count <> 0 then
+    raise exception
+      'C2 POLICY POSTFLIGHT FAILED: expected 0 policies, actual %',
+      actual_policy_count;
+  end if;
+
+  if has_table_privilege(
     'anon',
     'public.device_commands',
     'SELECT, INSERT, UPDATE, DELETE'
-  ) and not has_table_privilege(
+  ) or has_table_privilege(
     'authenticated',
     'public.device_commands',
     'SELECT, INSERT, UPDATE, DELETE'
-  ) and has_table_privilege(
+  ) or not has_table_privilege(
     'service_role',
     'public.device_commands',
     'SELECT, INSERT, UPDATE, DELETE'
-  ) then 1
-  else 1 / 0
-end as table_privilege_gate;
+  ) then
+    raise exception
+      'C2 TABLE PRIVILEGE POSTFLIGHT FAILED: public roles must have none and service_role must have CRUD';
+  end if;
 
-select case
-  when not has_sequence_privilege(
+  if has_sequence_privilege(
     'anon',
     'public.device_commands_sequence_seq',
     'USAGE, SELECT, UPDATE'
-  ) and not has_sequence_privilege(
+  ) or has_sequence_privilege(
     'authenticated',
     'public.device_commands_sequence_seq',
     'USAGE, SELECT, UPDATE'
-  ) and has_sequence_privilege(
+  ) or not has_sequence_privilege(
     'service_role',
     'public.device_commands_sequence_seq',
     'USAGE, SELECT, UPDATE'
-  ) then 1
-  else 1 / 0
-end as sequence_privilege_gate;
+  ) then
+    raise exception
+      'C2 SEQUENCE PRIVILEGE POSTFLIGHT FAILED: public roles must have none and service_role must have USAGE, SELECT, UPDATE';
+  end if;
+end
+$$;
+
+\echo 'C2 STRUCTURE AND PRIVILEGE POSTFLIGHT PASSED'
 
 rollback;
 
@@ -151,23 +175,36 @@ values
     now() + interval '2 minutes'
   );
 
-select case
-  when (
-    select count(*)
-    from public.device_commands
-    where device_id = :'fixture_device_id'
-  ) = 3 then 1
-  else 1 / 0
-end as three_core_actuators_gate;
+do $$
+declare
+  target_device_id uuid;
+  actual_commands bigint;
+  actual_sequences bigint;
+begin
+  select id into strict target_device_id
+  from public.devices
+  where name = 'C2 isolated staging validation';
 
-select case
-  when (
-    select count(distinct sequence)
-    from public.device_commands
-    where device_id = :'fixture_device_id'
-  ) = 3 then 1
-  else 1 / 0
-end as distinct_sequence_gate;
+  select count(*), count(distinct sequence)
+    into actual_commands, actual_sequences
+  from public.device_commands
+  where device_id = target_device_id;
+
+  if actual_commands <> 3 then
+    raise exception
+      'C2 POSITIVE TEST FAILED: expected 3 core-actuator commands, actual %',
+      actual_commands;
+  end if;
+
+  if actual_sequences <> 3 then
+    raise exception
+      'C2 SEQUENCE TEST FAILED: expected 3 distinct sequences, actual %',
+      actual_sequences;
+  end if;
+end
+$$;
+
+\echo 'C2 POSITIVE COMMAND AND SEQUENCE TESTS PASSED'
 
 do $$
 declare
@@ -294,28 +331,34 @@ commit;
 \echo 'C2 STAGING PHASE 6: FINAL READ-ONLY POSTFLIGHT'
 begin transaction read only;
 
-select case
-  when to_regclass('public.device_commands') is null then 1
-  else 1 / 0
-end as rollback_removed_table_gate;
+do $$
+begin
+  if to_regclass('public.device_commands') is not null then
+    raise exception
+      'C2 ROLLBACK POSTFLIGHT FAILED: public.device_commands still exists';
+  end if;
 
-select case
-  when not exists (
+  if exists (
     select 1
     from public.devices
-    where id = :'fixture_device_id'
-  ) then 1
-  else 1 / 0
-end as fixture_device_removed_gate;
+    where name = 'C2 isolated staging validation'
+  ) then
+    raise exception
+      'C2 FIXTURE POSTFLIGHT FAILED: validation device still exists';
+  end if;
 
-select case
-  when not exists (
+  if exists (
     select 1
     from public.greenhouses
-    where id = :fixture_greenhouse_id
-  ) then 1
-  else 1 / 0
-end as fixture_greenhouse_removed_gate;
+    where id = -9223372036854775000
+  ) then
+    raise exception
+      'C2 FIXTURE POSTFLIGHT FAILED: validation greenhouse still exists';
+  end if;
+end
+$$;
+
+\echo 'C2 ROLLBACK AND FIXTURE POSTFLIGHT PASSED'
 
 rollback;
 

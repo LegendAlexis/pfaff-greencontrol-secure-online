@@ -209,7 +209,7 @@ test("C2 Staging validation covers apply, positive, negative and rollback", asyn
 
   assert.match(validation, /READ-ONLY PREFLIGHT/i);
   assert.match(validation, /APPLY FORWARD DRAFT/i);
-  assert.match(validation, /three_core_actuators_gate/i);
+  assert.match(validation, /expected 3 core-actuator commands/i);
   assert.match(
     validation,
     /\\set fixture_greenhouse_id -9223372036854775000/i,
@@ -223,7 +223,8 @@ test("C2 Staging validation covers apply, positive, negative and rollback", asyn
   assert.match(validation, /nonpositive validity accepted/i);
   assert.match(validation, /device history deletion accepted/i);
   assert.match(validation, /ROLLBACK TEST/i);
-  assert.match(validation, /rollback_removed_table_gate/i);
+  assert.match(validation, /public\.device_commands still exists/i);
+  assert.doesNotMatch(validation, /1\s*\/\s*0/);
   assert.match(validation, /BASELINE RESTORED/i);
 });
 
