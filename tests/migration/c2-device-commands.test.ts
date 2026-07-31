@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const root = new URL("../../", import.meta.url);
@@ -14,6 +16,13 @@ const rollbackUrl = new URL(
 const documentationUrl = new URL(
   "docs/greencontrol-2x/c2-device-command-migration.md",
   root,
+);
+const validationUrl = new URL(
+  "scripts/database/c2-staging-validation.sql",
+  root,
+);
+const runner = fileURLToPath(
+  new URL("scripts/database/invoke-c2-staging-validation.ps1", root),
 );
 
 async function artifacts() {
@@ -90,6 +99,18 @@ test("C2 uses an atomic monotone sequence and enforces device ordering", async (
     /unique\s*\(device_id,\s*actuator,\s*sequence\)/i,
   );
   assert.match(documentation, /Firmware[\s\S]*getrennt für `watering`/i);
+});
+
+test("C2 preserves device identity and command history on device deletion", async () => {
+  const { forward, documentation } = await artifacts();
+
+  assert.match(
+    forward,
+    /references public\.devices\(id\) on delete restrict/i,
+  );
+  assert.doesNotMatch(forward, /on delete (cascade|set null)/i);
+  assert.match(documentation, /Gerätebeziehung verwendet `ON DELETE RESTRICT`/);
+  assert.match(documentation, /`SET NULL` wurde verworfen/);
 });
 
 test("C2 stores delivery, acknowledgement and actual state", async () => {
@@ -181,4 +202,62 @@ test("C2 contains no tenant, firmware or hardware changes", async () => {
   assert.doesNotMatch(sql, /\b(organizations|sites|tenant)\b/i);
   assert.doesNotMatch(sql, /\b(gpio|relay|firmware_version)\b/i);
   assert.doesNotMatch(sql, /\b(manual_commands|watering_schedule)\b/i);
+});
+
+test("C2 Staging validation covers apply, positive, negative and rollback", async () => {
+  const validation = await readFile(validationUrl, "utf8");
+
+  assert.match(validation, /READ-ONLY PREFLIGHT/i);
+  assert.match(validation, /APPLY FORWARD DRAFT/i);
+  assert.match(validation, /three_core_actuators_gate/i);
+  assert.match(validation, /mismatched watering command accepted/i);
+  assert.match(validation, /extra payload field accepted/i);
+  assert.match(validation, /nonpositive validity accepted/i);
+  assert.match(validation, /device history deletion accepted/i);
+  assert.match(validation, /ROLLBACK TEST/i);
+  assert.match(validation, /rollback_removed_table_gate/i);
+  assert.match(validation, /BASELINE RESTORED/i);
+});
+
+test("C2 Staging runner refuses by default and binds the exact project", () => {
+  const baseArguments = [
+    "-DatabaseHost",
+    "aws-0-eu-west-3.pooler.supabase.com",
+    "-DatabaseUser",
+    "postgres.iacplyydjtiirghwixys",
+  ];
+  const run = (arguments_: string[]) =>
+    spawnSync(
+      "powershell.exe",
+      [
+        "-NoLogo",
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        runner,
+        ...arguments_,
+      ],
+      { encoding: "utf8" },
+    );
+
+  const refused = run(baseArguments);
+  assert.notEqual(refused.status, 0);
+
+  const dryRun = run([...baseArguments, "-DryRun"]);
+  assert.equal(dryRun.status, 0, dryRun.stderr);
+  const output = JSON.parse(dryRun.stdout);
+  assert.equal(output.expectedProjectRef, "iacplyydjtiirghwixys");
+  assert.equal(output.connectionAttempted, false);
+
+  for (const [argument, value] of [
+    ["-DatabaseHost", "unexpected.pooler.supabase.com"],
+    ["-DatabaseUser", "postgres.unexpected"],
+  ]) {
+    const mismatched = [...baseArguments];
+    mismatched[mismatched.indexOf(argument) + 1] = value;
+    mismatched.push("-DryRun");
+    assert.notEqual(run(mismatched).status, 0);
+  }
 });

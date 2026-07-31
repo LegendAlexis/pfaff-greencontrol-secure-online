@@ -33,6 +33,13 @@ Die Tabelle speichert nur:
 Eine `greenhouse_id` wird nicht dupliziert. Das Gewächshaus ist über
 `devices.greenhouse_id` eindeutig ableitbar.
 
+Die Gerätebeziehung verwendet `ON DELETE RESTRICT`. Sobald Commands für ein
+Gerät existieren, kann dessen Datensatz nicht mehr physisch gelöscht werden.
+Das bewahrt die eindeutige Zuordnung und Command-Historie. Geräte mit Historie
+müssen deaktiviert beziehungsweise in einer späteren Gerätephase archiviert
+werden. `SET NULL` wurde verworfen, weil es die Zielidentität historischer
+Commands verlieren und die Sequenz- sowie Poll-Invarianten aufweichen würde.
+
 Die Identity-Sequenz wird von PostgreSQL atomar erzeugt. Sie ist global
 monoton; die Firmware bewertet und speichert den letzten Wert trotzdem
 getrennt für `watering`, `roof_window` und `side_window`. Nicht
@@ -86,6 +93,7 @@ gelöscht.
 3. Draft in der isolierten Staging-Instanz transaktional anwenden.
 4. Tabellen-, Constraint-, Index-, RLS- und Grant-Postflight ausführen.
 5. Negative Inserts für ungültige Aktor-/Payload-Kombinationen testen.
-6. Rollback nur in einer separaten leeren Validierung ausführen.
-7. Erst danach eine produktionsfähige lineare Migration zur Freigabe
+6. Prüfen, dass ein Gerät mit Command-Historie nicht gelöscht werden kann.
+7. Testdaten entfernen und den Rollback auf der wieder leeren Tabelle testen.
+8. Erst danach eine produktionsfähige lineare Migration zur Freigabe
    vorschlagen.

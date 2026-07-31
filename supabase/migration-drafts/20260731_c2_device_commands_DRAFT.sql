@@ -8,7 +8,7 @@ create table public.device_commands (
   id uuid primary key default gen_random_uuid(),
   protocol_version smallint not null default 1,
   device_id uuid not null
-    references public.devices(id) on delete cascade,
+    references public.devices(id) on delete restrict,
   actuator text not null,
   command text not null,
   sequence bigint generated always as identity,
