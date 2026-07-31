@@ -40,7 +40,11 @@ test("watering is the only controller allowed to energize an output", async () =
 
   assert.match(watering, /set\(GC_RELAY_WATERING, targetOn\)/);
   assert.match(watering, /GC_WATERING_FROST_LOCK_C/);
+  assert.match(watering, /GC_TEMPERATURE_MAX_AGE_MS/);
+  assert.match(watering, /temperatureMeasuredAtMs_ != 0/);
+  assert.match(watering, /targetOn && \(!temperatureIsCurrent \|\| isnan/);
   assert.match(watering, /GC_ENABLE_OUTPUTS/);
+  assert.match(watering, /targetOn && !GC_ENABLE_OUTPUTS/);
   assert.doesNotMatch(watering, /GC_RELAY_(ROOF|WALL)_/);
   assert.doesNotMatch(`${roof}\n${side}`, /set\([^,]+,\s*true\)/);
 });

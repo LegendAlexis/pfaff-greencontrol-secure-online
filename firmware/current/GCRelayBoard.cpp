@@ -14,10 +14,10 @@ bool GCRelayBoard::writeRegister(uint8_t r, uint8_t v) {
   return Wire.endTransmission() == 0;
 }
 
-bool GCRelayBoard::writeOutputs() {
+bool GCRelayBoard::writeOutputs(uint8_t logicalState) {
   const uint8_t physicalState = GC_RELAY_ACTIVE_HIGH
-    ? logicalState_
-    : static_cast<uint8_t>(~logicalState_);
+    ? logicalState
+    : static_cast<uint8_t>(~logicalState);
   return writeRegister(OUT, physicalState);
 }
 
@@ -66,7 +66,7 @@ void GCRelayBoard::begin() {
     return;
   }
 
-  available_ = writeOutputs();
+  available_ = writeOutputs(logicalState_);
   if (available_) {
     Serial.println("Relaisboard erkannt. Alle Relais AUS.");
     Serial.println("Fenster CH1-CH4 voruebergehend deaktiviert.");
@@ -86,19 +86,26 @@ bool GCRelayBoard::set(uint8_t channel, bool on) {
   }
 
   const bool before = isOn(channel);
-
+  uint8_t requestedState = logicalState_;
   if (on) {
-    logicalState_ |= static_cast<uint8_t>(1U << channel);
+    requestedState |= static_cast<uint8_t>(1U << channel);
   } else {
-    logicalState_ &= static_cast<uint8_t>(~(1U << channel));
+    requestedState &= static_cast<uint8_t>(~(1U << channel));
   }
 
-  const bool ok = writeOutputs();
-  if (ok && before != on) {
+  if (!writeOutputs(requestedState)) {
+    Serial.printf(
+      "FEHLER: RELAIS CH%u I2C-Schreibfehler; Zustand unveraendert.\n",
+      channel + 1
+    );
+    return false;
+  }
+
+  logicalState_ = requestedState;
+  if (before != on) {
     Serial.printf("RELAIS CH%u -> %s\n", channel + 1, on ? "EIN" : "AUS");
   }
-
-  return ok;
+  return true;
 }
 
 bool GCRelayBoard::isOn(uint8_t channel) const {
@@ -106,8 +113,16 @@ bool GCRelayBoard::isOn(uint8_t channel) const {
     (logicalState_ & static_cast<uint8_t>(1U << channel));
 }
 
-void GCRelayBoard::allOff() {
+bool GCRelayBoard::allOff() {
+  if (!available_) {
+    Serial.println("FEHLER: Alle Relais AUS nicht bestaetigt; Board fehlt.");
+    return false;
+  }
+  if (!writeOutputs(0)) {
+    Serial.println("FEHLER: Alle Relais AUS I2C-Schreibfehler.");
+    return false;
+  }
   logicalState_ = 0;
-  if (available_) writeOutputs();
-  Serial.println("SICHERHEIT: Alle Relais AUS.");
+  Serial.println("SICHERHEIT: Alle Relais AUS bestaetigt.");
+  return true;
 }

@@ -33,10 +33,16 @@ bool GCCommandOrchestrator::begin(GCRelayBoard& relayBoard) {
   return true;
 }
 
-void GCCommandOrchestrator::update(float temperatureC) {
+void GCCommandOrchestrator::update(
+  float temperatureC,
+  unsigned long temperatureMeasuredAtMs
+) {
   if (!ready_) return;
 
-  wateringController_.setTemperature(temperatureC);
+  wateringController_.setTemperature(
+    temperatureC,
+    temperatureMeasuredAtMs
+  );
   if (
     static_cast<long>(millis() - pollClient_.nextPollAtMs()) < 0
   ) {

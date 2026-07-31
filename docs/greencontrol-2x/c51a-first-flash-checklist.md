@@ -30,6 +30,7 @@ Werte nur lokal prüfen; nichts Geheimes in Chat oder Log kopieren.
 - [ ] Root-CA wurde gegen die aktuelle Staging-Zertifikatskette geprüft.
 - [ ] PEM ist vollständig und enthält keinen Platzhalter.
 - [ ] `GC_ENABLE_OUTPUTS=false`.
+- [ ] `GC_COMMAND_AUTHORITY_POLL=true`; Legacy-Heartbeat ist nur Telemetrie.
 - [ ] `GC_COMMAND_DIAGNOSTICS=1` nur für diesen beaufsichtigten Test.
 - [ ] `GCConfig.h` ist weiterhin ignoriert und unversioniert.
 
@@ -72,13 +73,14 @@ Nach dem Flash muss die Reihenfolge erkennbar sein:
 6. `Fenster CH1-CH4 voruebergehend deaktiviert.`,
 7. `DS18B20 Datenpin: GPIO21` und gefundene Sensoranzahl,
 8. `Verbinde mit WLAN ...`,
-9. `SICHERHEIT: Alle Relais AUS.`,
+9. `SICHERHEIT: Alle Relais AUS bestaetigt.`,
 10. `C5 TLS CONFIG READY`,
 11. `C5 COMMAND STATE READY`,
-12. `WLAN verbunden.` mit IP und RSSI,
-13. mindestens dreimal `C5 POLL OK ... next_ms=1500`,
-14. nach etwa zehn Sekunden plausible Temperatur,
-15. nach etwa 30 Sekunden Heartbeat mit HTTP 200.
+12. `Command-Autoritaet: POLL`,
+13. `WLAN verbunden.` mit IP und RSSI,
+14. mindestens dreimal `C5 POLL OK ... next_ms=1500`,
+15. nach etwa zehn Sekunden plausible Temperatur,
+16. nach etwa 30 Sekunden Heartbeat mit HTTP 200.
 
 - [ ] Kein Reset und keine Bootschleife.
 - [ ] CH1–CH5 bleiben physisch AUS.

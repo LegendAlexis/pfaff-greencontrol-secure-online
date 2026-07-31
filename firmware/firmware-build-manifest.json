@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "c5.1-conditional-flash-candidate",
+  "status": "c5.1b-ch5-conditional-flash-candidate",
   "architectureFinal": false,
   "sourceDirectory": "firmware/current",
   "entrySketch": "firmware/current/Pfaff_GreenControl_Firmware_v1_3_1_GPIO21_windows_off.ino",
@@ -71,7 +71,7 @@
     "verifiedOn": "2026-07-31",
     "result": {
       "exitCode": 0,
-      "programBytes": 1082101,
+      "programBytes": 1083181,
       "programMaximumBytes": 1310720,
       "programPercent": 82,
       "globalVariableBytes": 47892,

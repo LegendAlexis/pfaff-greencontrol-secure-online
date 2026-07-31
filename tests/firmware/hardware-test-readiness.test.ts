@@ -29,11 +29,43 @@ test("C5 diagnostics are opt-in and never print device credentials", async () =>
 
 test("hardware-test diagnostics do not weaken TLS or window locks", async () => {
   const poll = await source("GCCommandPollClient.cpp");
+  const heartbeat = await source("GCCloudClient.cpp");
   const relay = await source("GCRelayBoard.cpp");
 
   assert.doesNotMatch(poll, /setInsecure\s*\(/);
+  assert.doesNotMatch(heartbeat, /setInsecure\s*\(/);
   assert.match(poll, /setCACert\(GC_TLS_ROOT_CA_PEM\)/);
+  assert.match(heartbeat, /setCACert\(GC_TLS_ROOT_CA_PEM\)/);
   assert.match(relay, /channel == GC_RELAY_ROOF_OPEN/);
   assert.match(relay, /channel == GC_RELAY_WALL_CLOSE/);
   assert.match(relay, /if \(on && !permitted\(channel\)\)/);
+});
+
+test("relay cache changes only after a confirmed I2C write", async () => {
+  const relay = await source("GCRelayBoard.cpp");
+  const write = relay.indexOf("writeOutputs(requestedState)");
+  const commit = relay.indexOf("logicalState_ = requestedState");
+
+  assert.ok(write >= 0);
+  assert.ok(commit > write);
+  assert.match(relay, /if \(!writeOutputs\(requestedState\)\)/);
+  assert.match(relay, /bool GCRelayBoard::allOff\(\)/);
+  assert.match(relay, /if \(!writeOutputs\(0\)\)/);
+});
+
+test("poll authority excludes legacy command application", async () => {
+  const config = await source("GCConfig.example.h");
+  const sketch = await source(
+    "Pfaff_GreenControl_Firmware_v1_3_1_GPIO21_windows_off.ino",
+  );
+
+  assert.match(config, /#define GC_COMMAND_AUTHORITY_POLL true/);
+  assert.match(
+    sketch,
+    /sendHeartbeat\(state, commands\) && !GC_COMMAND_AUTHORITY_POLL/,
+  );
+  assert.match(
+    sketch,
+    /wifiService\.isConnected\(\) && GC_COMMAND_AUTHORITY_POLL/,
+  );
 });

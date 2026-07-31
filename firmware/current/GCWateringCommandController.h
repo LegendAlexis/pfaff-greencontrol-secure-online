@@ -8,7 +8,7 @@
 class GCWateringCommandController {
  public:
   void begin(GCRelayBoard& relayBoard, GCCommandStateStore& stateStore);
-  void setTemperature(float temperatureC);
+  void setTemperature(float temperatureC, unsigned long measuredAtMs);
   bool process(
     const GCParsedCommand& command,
     GCAcknowledgement& acknowledgement
@@ -24,4 +24,5 @@ class GCWateringCommandController {
   GCRelayBoard* relayBoard_ = nullptr;
   GCCommandStateStore* stateStore_ = nullptr;
   float temperatureC_ = NAN;
+  unsigned long temperatureMeasuredAtMs_ = 0;
 };

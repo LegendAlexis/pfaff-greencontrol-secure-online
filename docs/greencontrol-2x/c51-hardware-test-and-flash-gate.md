@@ -15,7 +15,9 @@ bestätigt werden:
 - ausschließlich ein isoliertes Staging-Testgerät ist zugeordnet,
 - CH1 bis CH4 sind physisch getrennt,
 - produktive Bewässerung ist getrennt,
-- CH5 trägt ausschließlich eine geeignete sichere Prüflast.
+- CH5 trägt ausschließlich eine geeignete sichere Prüflast,
+- `GC_COMMAND_AUTHORITY_POLL=true`; der Legacy-Heartbeat bleibt Telemetrie und
+  darf keine Commands anwenden.
 
 Bis alle Gates erfüllt sind, gilt: **kein Flash**. Zugangsdaten oder Zertifikate
 werden weder in dieses Dokument noch in serielle Logs übernommen.
@@ -63,6 +65,7 @@ Soll:
 
 - Startbanner, I2C und „Alle Relais AUS“,
 - NVS bereit, keine NVS-Sicherheitsmeldung,
+- serielle Meldung `Command-Autoritaet: POLL`,
 - CH1 bis CH5 bleiben AUS,
 - DS18B20 liefert plausible Temperatur.
 
@@ -76,7 +79,7 @@ Soll:
 - Staging-Identität und beide API-Hosts wurden vorab lokal bestätigt,
 - `C5 TLS CONFIG READY`, danach wiederholt `C5 POLL OK`,
 - HTTP 200, gültiges Protokoll, `next_ms=1500`,
-- kein `setInsecure()` im Pollpfad,
+- kein `setInsecure()` in Poll- oder Heartbeatpfad,
 - keine Verbindung zum Hauptprojekt.
 
 Abbruch: anderer Host, Zertifikatsfehler, 401/403, wiederholte Protokollfehler,

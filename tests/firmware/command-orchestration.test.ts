@@ -15,7 +15,10 @@ test("loop integrates the orchestrator beside the unchanged heartbeat", async ()
 
   assert.match(sketch, /GCCommandOrchestrator commandOrchestrator/);
   assert.match(sketch, /commandOrchestrator\.begin\(relayBoard\)/);
-  assert.match(sketch, /commandOrchestrator\.update\(lastTemperatureC\)/);
+  assert.match(
+    sketch,
+    /commandOrchestrator\.update\(lastTemperatureC, lastTemperatureReadMs\)/,
+  );
   assert.match(sketch, /cloudClient\.sendHeartbeat/);
   assert.match(sketch, /GC_HEARTBEAT_INTERVAL_MS/);
 });

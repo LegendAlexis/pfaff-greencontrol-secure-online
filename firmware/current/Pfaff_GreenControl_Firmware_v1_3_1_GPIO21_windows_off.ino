@@ -8,6 +8,10 @@
 #include "GCSafetyController.h"
 #include "GCCommandOrchestrator.h"
 
+#ifndef GC_COMMAND_AUTHORITY_POLL
+#define GC_COMMAND_AUTHORITY_POLL false
+#endif
+
 GCWifiService wifiService;
 GCTemperatureService temperatureService;
 GCRelayBoard relayBoard;
@@ -34,6 +38,10 @@ void setup() {
   wifiService.begin();
   safetyController.begin(relayBoard, inputService);
   commandOrchestrator.begin(relayBoard);
+  Serial.printf(
+    "Command-Autoritaet: %s\n",
+    GC_COMMAND_AUTHORITY_POLL ? "POLL" : "LEGACY_HEARTBEAT"
+  );
 }
 
 void loop() {
@@ -62,10 +70,12 @@ void loop() {
     state.wateringOn = relayBoard.isOn(GC_RELAY_WATERING);
     state.heatingOn = relayBoard.isOn(GC_RELAY_HEATING);
     GCCloudCommands commands;
-    if (cloudClient.sendHeartbeat(state, commands)) safetyController.applyCloudCommands(commands);
+    if (cloudClient.sendHeartbeat(state, commands) && !GC_COMMAND_AUTHORITY_POLL) {
+      safetyController.applyCloudCommands(commands);
+    }
   }
-  if (wifiService.isConnected()) {
-    commandOrchestrator.update(lastTemperatureC);
+  if (wifiService.isConnected() && GC_COMMAND_AUTHORITY_POLL) {
+    commandOrchestrator.update(lastTemperatureC, lastTemperatureReadMs);
   }
   delay(20);
 }

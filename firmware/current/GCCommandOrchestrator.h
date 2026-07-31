@@ -11,7 +11,7 @@
 class GCCommandOrchestrator {
  public:
   bool begin(GCRelayBoard& relayBoard);
-  void update(float temperatureC);
+  void update(float temperatureC, unsigned long temperatureMeasuredAtMs);
 
  private:
   size_t loadPendingAcknowledgements(

@@ -34,9 +34,12 @@ REPLACE_WITH_VERIFIED_ROOT_CA
 #define GC_COMMAND_POLL_REQUEST_TIMEOUT_MS 5000UL
 // Enable only during an attended hardware test. Logs contain no credentials.
 #define GC_COMMAND_DIAGNOSTICS 0
+// Exactly one command authority is active. C5 hardware tests use Poll.
+#define GC_COMMAND_AUTHORITY_POLL true
 #define GC_CLOUD_COMMAND_TIMEOUT_MS 120000UL
 #define GC_VALID_TEMP_MIN_C -55.0F
 #define GC_VALID_TEMP_MAX_C 125.0F
+#define GC_TEMPERATURE_MAX_AGE_MS 30000UL
 #define GC_WATERING_FROST_LOCK_C 2.0F
 #define GC_MAX_MOTOR_RUNTIME_MS 120000UL
 

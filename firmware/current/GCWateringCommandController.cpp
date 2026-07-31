@@ -10,8 +10,12 @@ void GCWateringCommandController::begin(
   stateStore_ = &stateStore;
 }
 
-void GCWateringCommandController::setTemperature(float temperatureC) {
+void GCWateringCommandController::setTemperature(
+  float temperatureC,
+  unsigned long measuredAtMs
+) {
   temperatureC_ = temperatureC;
+  temperatureMeasuredAtMs_ = measuredAtMs;
 }
 
 bool GCWateringCommandController::process(
@@ -34,11 +38,13 @@ bool GCWateringCommandController::process(
   }
 
   const bool targetOn = command.operation == GCCommandOperation::WateringOn;
-  if (
-    targetOn &&
-    !isnan(temperatureC_) &&
-    temperatureC_ <= GC_WATERING_FROST_LOCK_C
-  ) {
+  const bool temperatureIsCurrent =
+    temperatureMeasuredAtMs_ != 0 &&
+    millis() - temperatureMeasuredAtMs_ <= GC_TEMPERATURE_MAX_AGE_MS;
+  if (targetOn && (!temperatureIsCurrent || isnan(temperatureC_))) {
+    Serial.println(
+      "SICHERHEIT: Bewaesserung EIN ohne aktuelle Temperatur gesperrt."
+    );
     GCActuatorCommandGuard::setWateringState(
       acknowledgement,
       relayBoard_->isOn(GC_RELAY_WATERING)
@@ -48,7 +54,18 @@ bool GCWateringCommandController::process(
     );
   }
 
-  if (!GC_ENABLE_OUTPUTS) {
+  if (targetOn && temperatureC_ <= GC_WATERING_FROST_LOCK_C) {
+    Serial.println("SICHERHEIT: Bewaesserung EIN wegen Frost gesperrt.");
+    GCActuatorCommandGuard::setWateringState(
+      acknowledgement,
+      relayBoard_->isOn(GC_RELAY_WATERING)
+    );
+    return GCActuatorCommandGuard::persistDecision(
+      *stateStore_, command, acknowledgement, "rejected", "frost_lock"
+    );
+  }
+
+  if (targetOn && !GC_ENABLE_OUTPUTS) {
     GCActuatorCommandGuard::setWateringState(
       acknowledgement,
       relayBoard_->isOn(GC_RELAY_WATERING)
