@@ -210,6 +210,14 @@ test("C2 Staging validation covers apply, positive, negative and rollback", asyn
   assert.match(validation, /READ-ONLY PREFLIGHT/i);
   assert.match(validation, /APPLY FORWARD DRAFT/i);
   assert.match(validation, /three_core_actuators_gate/i);
+  assert.match(
+    validation,
+    /\\set fixture_greenhouse_id -9223372036854775000/i,
+  );
+  assert.doesNotMatch(
+    validation,
+    /returning id as fixture_greenhouse_id/i,
+  );
   assert.match(validation, /mismatched watering command accepted/i);
   assert.match(validation, /extra payload field accepted/i);
   assert.match(validation, /nonpositive validity accepted/i);

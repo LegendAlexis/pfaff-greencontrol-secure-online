@@ -98,10 +98,13 @@ rollback;
 begin;
 
 select gen_random_uuid() as fixture_device_id \gset
+\set fixture_greenhouse_id -9223372036854775000
 
-insert into public.greenhouses (name)
-values ('C2 isolated staging validation')
-returning id as fixture_greenhouse_id \gset
+insert into public.greenhouses (id, name)
+values (
+  :fixture_greenhouse_id,
+  'C2 isolated staging validation'
+);
 
 insert into public.devices (
   id,
