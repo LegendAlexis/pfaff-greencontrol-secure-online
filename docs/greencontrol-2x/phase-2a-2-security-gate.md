@@ -1,7 +1,7 @@
 # Phase 2A.2 Security Gate
 
-Status: minimale Härtung im Hauptprojekt angewendet und read-only
-nachgewiesen; Staging-Abgleich und Deployment-Smoke-Test ausstehend.
+Status: minimale Härtung im Hauptprojekt und in Staging angewendet und
+read-only nachgewiesen; Deployment-Smoke-Test ausstehend.
 
 ## Verifizierte Nachweise
 
@@ -139,57 +139,28 @@ Aufruf explizit binden.
 
 ## Validierung in Staging
 
-Status: strukturelle Read-only-Baseline bestätigt; Härtung ausstehend.
+Status: transaktionale Härtung und unabhängiger Read-only-Postflight
+bestanden.
 
-Der Harness `scripts/database/invoke-security-gate-test.ps1` führt genau
-drei Schritte aus:
+Das versionierte Skript
+`scripts/database/staging-security-integration.sql` wurde ausschließlich
+über explizit im `psql`-Aufruf gebundene Staging-Verbindungsparameter
+ausgeführt. Alle acht Phasen bestanden und die Transaktion wurde committed.
 
-| Schritt | Erwartetes Verhalten | Tatsächliches Verhalten | Rückfall |
-| --- | --- | --- | --- |
-| Preflight | Testinstanz entspricht der nachgewiesenen verwundbaren Baseline | ausstehend | keine Änderung; nur Metadatenabfrage |
-| minimale Härtung | nur Profilgrants und `manual_commands` werden abgesichert | ausstehend | Testinstanz verwerfen und aus der Baseline neu aufbauen |
-| Postflight | privilegierte Profilupdates und öffentlicher Zugriff sind verweigert; fünf Funktionen und zwei Public-Trigger bleiben vorhanden | ausstehend | keine Änderung; nur Metadatenabfrage |
+Der anschließende Postflight in einer neuen Read-only-Transaktion bestätigte:
 
-Sicherheitsgrenzen des Harness:
+- 13 Tabellen, 8 Sequenzen, 5 Funktionen und 2 Public-Trigger,
+- 26 unveränderte Policies,
+- 13 Tabellen mit aktivem RLS,
+- kein Profil-UPDATE für `authenticated`,
+- explizites und effektives Profil-UPDATE für `service_role`,
+- RLS ohne Allow-Policy für `manual_commands`,
+- keine CRUD- oder Sequenzrechte für `anon` und `authenticated`,
+- alle bestätigten Tabellen- und Sequenzrechte für `service_role`.
 
-- verweigert Übereinstimmung mit Produktionshost oder
-  Produktions-Project-Ref,
-- verlangt ausdrücklich `-ExecuteOnDisposableTest`,
-- akzeptiert ausschließlich SQL-Dateien im Repository,
-- verwendet ausschließlich den fest definierten Security-Draft,
-- verlangt PostgreSQL Client 17.x,
-- nimmt kein Passwort als Parameter entgegen,
-- lässt `psql` das Passwort interaktiv abfragen,
-- enthält keine Tenant- oder Featuremigration.
-
-Beispiel für die lokale Ausführung; sämtliche Platzhalter müssen mit den
-nicht geheimen Identitäten der beiden Projekte ersetzt werden:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass `
-  -File scripts/database/invoke-security-gate-test.ps1 `
-  -TargetHost "<TEST_HOST>" `
-  -TargetProjectRef "<TEST_PROJECT_REF>" `
-  -ProductionHost "<PRODUCTION_HOST>" `
-  -ProductionProjectRef "<PRODUCTION_PROJECT_REF>" `
-  -DatabaseUser "<TEST_DATABASE_USER>" `
-  -ExecuteOnDisposableTest
-```
-
-Das Testdatenbankpasswort wird ausschließlich in der interaktiven
-`psql`-Abfrage eingegeben. Es darf nicht in Chat, Befehlszeile,
-Repository oder Bericht erscheinen.
-
-Neue statische Validierungstests:
-
-- Ausführung ohne ausdrücklichen Testschalter wird verweigert.
-- Übereinstimmung einer der Produktionsidentitäten wird verweigert.
-- Pre-/Postflight enthalten keine DML, Tenant- oder Featureänderung.
-- Postflight prüft alle drei privilegierten Profilspalten.
-- Postflight prüft RLS, Tabellenrechte, Sequenzrechte und fehlende
-  Allow-Policies für `manual_commands`.
-- Postflight prüft den Fortbestand der fünf Funktionen und zwei
-  Public-Trigger.
+Die Staging-Ausführung enthielt keine produktiven Daten, Geräte,
+Integrationen oder Secrets. Das Datenbankpasswort blieb ausschließlich in
+der interaktiven lokalen `psql`-Eingabe.
 
 ## Abschlussbedingungen
 
@@ -197,8 +168,8 @@ Das Security Gate gilt erst vollständig als geschlossen, wenn:
 
 1. die Cron-Rotation extern bestätigt wurde,
 2. der Security-Draft mit explizit gebundener Staging-Identität ausgeführt
-   wurde,
-3. die negativen Rechteprüfungen dort bestanden wurden,
+   wurde (erfüllt),
+3. die negativen Rechteprüfungen dort bestanden wurden (erfüllt),
 4. Repository-Tests, Deployment und Smoke-Test bestanden wurden.
 
 Bis dahin bleibt Phase 2A.2c blockiert.
