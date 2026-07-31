@@ -67,7 +67,7 @@ test("sequence is persisted before the CH5 transition", async () => {
   assert.match(watering, /alreadyAtTarget/);
 });
 
-test("C4.3 leaves sketch and heartbeat path unintegrated", async () => {
+test("sketch does not couple directly to individual actuator controllers", async () => {
   const sketch = await source(
     "Pfaff_GreenControl_Firmware_v1_3_1_GPIO21_windows_off.ino",
   );

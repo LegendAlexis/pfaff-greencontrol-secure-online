@@ -6,6 +6,7 @@
 #include "GCInputService.h"
 #include "GCCloudClient.h"
 #include "GCSafetyController.h"
+#include "GCCommandOrchestrator.h"
 
 GCWifiService wifiService;
 GCTemperatureService temperatureService;
@@ -13,6 +14,7 @@ GCRelayBoard relayBoard;
 GCInputService inputService;
 GCCloudClient cloudClient;
 GCSafetyController safetyController;
+GCCommandOrchestrator commandOrchestrator;
 
 unsigned long lastTemperatureReadMs = 0;
 unsigned long lastHeartbeatMs = 0;
@@ -31,6 +33,7 @@ void setup() {
   temperatureService.begin();
   wifiService.begin();
   safetyController.begin(relayBoard, inputService);
+  commandOrchestrator.begin(relayBoard);
 }
 
 void loop() {
@@ -60,6 +63,9 @@ void loop() {
     state.heatingOn = relayBoard.isOn(GC_RELAY_HEATING);
     GCCloudCommands commands;
     if (cloudClient.sendHeartbeat(state, commands)) safetyController.applyCloudCommands(commands);
+  }
+  if (wifiService.isConnected()) {
+    commandOrchestrator.update(lastTemperatureC);
   }
   delay(20);
 }
