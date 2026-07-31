@@ -2,10 +2,9 @@
 
 ## Status
 
-Der identitätsgesicherte Integrationsrunner ist vorbereitet und lokal
-statisch getestet. Die echte Ausführung benötigt die ausschließlich lokal
-verwahrten Staging-Zugangsdaten. Ergebnisse werden erst nach einem
-erfolgreichen Lauf eingetragen.
+Abgeschlossen. Der identitätsgesicherte Integrationsrunner wurde am
+31. Juli 2026 erfolgreich gegen das GreenControl-Staging-Projekt
+`iacplyydjtiirghwixys` ausgeführt.
 
 ## Ablauf
 
@@ -36,4 +35,25 @@ nicht ausgegeben oder gespeichert.
 
 ## Ergebnis
 
-Noch ausstehend.
+Vom lokalen, secret-freien Ergebnisbericht bestätigt:
+
+- C2-Migration wurde erfolgreich auf Staging angewendet und bleibt dort
+  bestehen.
+- Geräteisolation und höchstens ein Command je Aktor wurden bestätigt.
+- Bewässerung, Dachfenster und Seitenfenster wurden getrennt ausgeliefert.
+- erneute Auslieferung vor ACK war idempotent,
+- aktorspezifische ACKs wurden gespeichert,
+- wiederholte identische ACKs blieben idempotent,
+- ein Cross-Device-ACK wurde mit HTTP 409 abgewiesen,
+- sämtliche synthetischen Commands, Geräte und das Testgewächshaus wurden
+  entfernt.
+
+Abschlussstatus:
+
+```text
+C3.5 STAGING INTEGRATION PASSED
+passed-fixtures-removed-c2-retained
+```
+
+Es wurden keine Firmware, Hardware, Heartbeat-Logik oder Produktionsdaten
+verändert.
