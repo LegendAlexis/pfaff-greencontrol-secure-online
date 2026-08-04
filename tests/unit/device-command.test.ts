@@ -104,6 +104,46 @@ test("rejects invalid protocol, identity, sequence and timestamps", () => {
   }
 });
 
+test("accepts canonical and PostgreSQL UTC command timestamps", () => {
+  const timestamps = [
+    ["2026-08-04T13:53:24.794Z", "2026-08-04T13:55:24.803Z"],
+    [
+      "2026-08-04T13:53:24.794888+00:00",
+      "2026-08-04T13:55:24.803+00:00",
+    ],
+  ] as const;
+
+  for (const [created_at, expires_at] of timestamps) {
+    assert.equal(
+      validateDeviceCommand({
+        ...command("watering", { state: "on" }),
+        created_at,
+        expires_at,
+      }).ok,
+      true,
+    );
+  }
+});
+
+test("rejects unsupported timestamp variants", () => {
+  const invalidTimestamps = [
+    "2026-08-04T13:53:24.79+00:00",
+    "2026-08-04T13:53:24.7948887+00:00",
+    "2026-08-04T15:53:24.794+02:00",
+    "2026-08-04 13:53:24.794+00:00",
+  ];
+
+  for (const created_at of invalidTimestamps) {
+    assert.equal(
+      validateDeviceCommand({
+        ...command("watering", { state: "on" }),
+        created_at,
+      }).ok,
+      false,
+    );
+  }
+});
+
 test("accepts a new command for an enabled actuator", () => {
   const value = validCommand(command("watering", { state: "on" }, 4));
   const decision = evaluateDeviceCommand(value, {

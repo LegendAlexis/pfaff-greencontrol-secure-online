@@ -443,8 +443,17 @@ function isPositiveSequence(value: unknown): value is number {
 
 function isIsoDate(value: unknown): value is string {
   if (typeof value !== "string") return false;
+
+  const postgresUtc =
+    /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3})\d{0,3}\+00:00$/.exec(
+      value,
+    );
+  const canonical = postgresUtc ? `${postgresUtc[1]}Z` : value;
   const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) && new Date(timestamp).toISOString() === value;
+  return (
+    Number.isFinite(timestamp) &&
+    new Date(timestamp).toISOString() === canonical
+  );
 }
 
 function isOneOf<const T extends readonly unknown[]>(
