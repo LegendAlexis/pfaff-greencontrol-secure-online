@@ -162,7 +162,11 @@ export function initialWindowSafetyState(args: {
 }): WindowSafetyState {
   const openLimit = args.openLimit ?? null;
   const closedLimit = args.closedLimit ?? null;
-  const persistedFault = args.persistedFault ?? null;
+  const persistedFault =
+    args.persistedFault ??
+    (openLimit === true && closedLimit === true
+      ? "conflicting_limits"
+      : null);
 
   return {
     componentStatus: persistedFault
@@ -285,6 +289,22 @@ export function planWindowCommand(args: {
     );
   }
 
+
+  if (state.openLimit === true && state.closedLimit === true) {
+    return outputDecision(
+      "all_off",
+      latchedFault(state, "conflicting_limits"),
+      acknowledgement(
+        command,
+        "rejected",
+        latchedFault(state, "conflicting_limits"),
+        "configuration_invalid",
+      ),
+      command,
+      state,
+    );
+  }
+
   if (command.sequence < state.lastSequence) {
     return immediate(
       state,
@@ -297,6 +317,24 @@ export function planWindowCommand(args: {
     return immediate(state, command, "already_applied");
   }
   if (!isValidWindowSafetyConfiguration(configuration)) {
+    if (state.movement !== "stopped" || state.pendingDirection !== null) {
+      const configurationFault = latchedFault(
+        state,
+        "configuration_invalid",
+      );
+      return outputDecision(
+        "all_off",
+        configurationFault,
+        acknowledgement(
+          command,
+          "rejected",
+          configurationFault,
+          "configuration_invalid",
+        ),
+        command,
+        state,
+      );
+    }
     return immediate(
       state,
       command,
@@ -342,6 +380,15 @@ export function planWindowCommand(args: {
       interlockUntilMs: null,
       lastSequence: command.sequence,
     };
+    if (state.movement !== "stopped") {
+      return outputDecision(
+        "all_off",
+        atTarget,
+        acknowledgement(command, "applied", atTarget),
+        command,
+        state,
+      );
+    }
     return immediate(atTarget, command, "applied");
   }
 
@@ -352,11 +399,30 @@ export function planWindowCommand(args: {
   }
 
   if (state.movement !== "stopped") {
+    const interlockUntilMs = nowMs + configuration.directionChangeDelayMs;
+    if (!Number.isSafeInteger(interlockUntilMs)) {
+      const configurationFault = latchedFault(
+        state,
+        "configuration_invalid",
+      );
+      return outputDecision(
+        "all_off",
+        configurationFault,
+        acknowledgement(
+          command,
+          "rejected",
+          configurationFault,
+          "configuration_invalid",
+        ),
+        command,
+        state,
+      );
+    }
     const waiting = {
       ...stopState(state, command.sequence),
       componentStatus: "ready" as const,
       pendingDirection: direction,
-      interlockUntilMs: nowMs + configuration.directionChangeDelayMs,
+      interlockUntilMs,
     };
     return outputDecision(
       "all_off",
@@ -517,6 +583,13 @@ function planTickTransition(
   }
 
   if (state.movement !== "stopped" && state.motionStartedAtMs !== null) {
+    if (nowMs < state.motionStartedAtMs) {
+      return safetyOutput(
+        "all_off",
+        latchedFault(state, "configuration_invalid"),
+        state,
+      );
+    }
     const maximumRuntime =
       state.movement === "opening"
         ? configuration.maximumOpeningTimeMs

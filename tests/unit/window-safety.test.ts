@@ -62,6 +62,19 @@ test("derives only sensor-confirmed roof end positions after restart", () => {
   );
 });
 
+test("latches contradictory end positions during initialization", () => {
+  const state = initialWindowSafetyState({
+    enabled: true,
+    openLimit: true,
+    closedLimit: true,
+  });
+
+  assert.equal(state.componentStatus, "fault_latched");
+  assert.equal(state.faultCode, "conflicting_limits");
+  assert.equal(state.movement, "stopped");
+  assert.equal(state.position, "unknown");
+});
+
 test("restores a persisted fault without resuming movement", () => {
   const state = initialWindowSafetyState({
     enabled: true,
@@ -326,6 +339,55 @@ test("does not restart a running direction for a newer equivalent command", () =
   assert.equal(decision.acknowledgement.status, "applied");
 });
 
+test("requires confirmed all-off when a moving window is already at target", () => {
+  const inconsistent = {
+    ...initialWindowSafetyState({
+      enabled: true,
+      openLimit: true,
+      closedLimit: false,
+    }),
+    movement: "opening" as const,
+    motionStartedAtMs: 500,
+  };
+  const decision = planWindowCommand({
+    state: inconsistent,
+    command: { id: "open-at-limit", operation: "open", sequence: 1 },
+    configuration: { ...roofConfiguration, enabled: true },
+    nowMs: 1_000,
+  });
+
+  assert.equal(decision.kind, "requires_output_confirmation");
+  assert.equal(decision.action, "all_off");
+  assert.equal(decision.onConfirmed.state.position, "open");
+  assert.equal(decision.onConfirmed.state.movement, "stopped");
+});
+
+test("fails closed when a moving window has invalid safety configuration", () => {
+  const moving = {
+    ...initialWindowSafetyState({ enabled: true }),
+    movement: "opening" as const,
+    motionStartedAtMs: 500,
+  };
+  const decision = planWindowCommand({
+    state: moving,
+    command: { id: "open-invalid-config", operation: "open", sequence: 1 },
+    configuration: {
+      ...roofConfiguration,
+      enabled: true,
+      maximumOpeningTimeMs: 0,
+    },
+    nowMs: 1_000,
+  });
+
+  assert.equal(decision.kind, "requires_output_confirmation");
+  assert.equal(decision.action, "all_off");
+  assert.equal(decision.onConfirmed.state.componentStatus, "fault_latched");
+  assert.equal(
+    decision.onConfirmed.state.faultCode,
+    "configuration_invalid",
+  );
+});
+
 test("never infers a physical position from an unconfirmed target", () => {
   const state = initialWindowSafetyState({
     enabled: true,
@@ -466,6 +528,25 @@ test("latches a local runtime fault without any network decision", () => {
     "maximum_runtime_exceeded",
   );
   assert.equal(transition.onConfirmed.position, "unknown");
+});
+
+test("fails closed when the monotonic runtime clock moves backwards", () => {
+  const opening = {
+    ...initialWindowSafetyState({ enabled: true }),
+    movement: "opening" as const,
+    position: "unknown" as const,
+    motionStartedAtMs: 2_000,
+  };
+  const transition = planWindowSafetyEvent({
+    state: opening,
+    event: { type: "tick", nowMs: 1_999 },
+    configuration: { ...roofConfiguration, enabled: true },
+  });
+
+  assert.equal(transition.kind, "requires_output_confirmation");
+  assert.equal(transition.action, "all_off");
+  assert.equal(transition.onConfirmed.componentStatus, "fault_latched");
+  assert.equal(transition.onConfirmed.faultCode, "configuration_invalid");
 });
 
 test("starts the pending direction only after the interlock delay", () => {
