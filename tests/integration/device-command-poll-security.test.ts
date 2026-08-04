@@ -44,6 +44,17 @@ test("poll route uses existing device authentication and no-store responses", as
   assert.doesNotMatch(route, /device[_-]?secret.*console/i);
 });
 
+test("poll diagnostics log only safe PostgREST error fields", async () => {
+  const route = await readFile(routeUrl, "utf8");
+
+  assert.match(route, /safeDatabaseError\(error\)/);
+  assert.match(route, /code: safeErrorField\(candidate\.code\)/);
+  assert.match(route, /message: safeErrorField\(candidate\.message\)/);
+  assert.match(route, /details: safeErrorField\(candidate\.details\)/);
+  assert.match(route, /hint: safeErrorField\(candidate\.hint\)/);
+  assert.doesNotMatch(route, /candidate\.(headers|token|secret|device|body)/i);
+});
+
 test("C3 leaves the existing heartbeat implementation unchanged", async () => {
   const heartbeat = await readFile(heartbeatUrl, "utf8");
 

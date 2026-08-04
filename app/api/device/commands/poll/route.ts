@@ -126,12 +126,32 @@ export async function POST(request: NextRequest) {
 
     return response(result.status, result.body);
   } catch (error) {
-    console.error(
-      "Device command poll failed:",
-      error instanceof Error ? error.message : "unknown_error",
-    );
+    console.error("Device command poll failed:", safeDatabaseError(error));
     return response(500, { error: "command_poll_failed" });
   }
+}
+
+function safeDatabaseError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return {
+      code: null,
+      message: error instanceof Error ? error.message : "unknown_error",
+      details: null,
+      hint: null,
+    };
+  }
+
+  const candidate = error as Record<string, unknown>;
+  return {
+    code: safeErrorField(candidate.code),
+    message: safeErrorField(candidate.message) ?? "unknown_error",
+    details: safeErrorField(candidate.details),
+    hint: safeErrorField(candidate.hint),
+  };
+}
+
+function safeErrorField(value: unknown) {
+  return typeof value === "string" ? value : null;
 }
 
 function acknowledgementsMatch(
