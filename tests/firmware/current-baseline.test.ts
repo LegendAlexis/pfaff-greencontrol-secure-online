@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const current = new URL("../../firmware/current/", import.meta.url);
+const current = new URL(
+  "../../firmware/current/Pfaff_GreenControl_Firmware_v1_3_1_GPIO21_windows_off/",
+  import.meta.url,
+);
 
 async function source(name: string): Promise<string> {
   return readFile(new URL(name, current), "utf8");
@@ -18,7 +21,10 @@ test("DS18B20 data pin is GPIO21", async () => {
 
 test("watering uses physical CH5 and zero-based channel 4", async () => {
   const config = await source("GCConfig.example.h");
-  const readme = await source("README.md");
+  const readme = await readFile(
+    new URL("../../firmware/current/README.md", import.meta.url),
+    "utf8",
+  );
 
   assert.match(config, /#define\s+GC_RELAY_WATERING\s+4\b/);
   assert.match(readme, /CH5/);

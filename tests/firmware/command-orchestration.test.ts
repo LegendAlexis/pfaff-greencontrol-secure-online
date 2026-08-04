@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const current = new URL("../../firmware/current/", import.meta.url);
+const current = new URL(
+  "../../firmware/current/Pfaff_GreenControl_Firmware_v1_3_1_GPIO21_windows_off/",
+  import.meta.url,
+);
 
 async function source(name: string) {
   return readFile(new URL(name, current), "utf8");

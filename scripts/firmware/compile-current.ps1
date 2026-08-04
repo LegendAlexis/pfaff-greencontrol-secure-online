@@ -10,14 +10,13 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repositoryRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
-$firmwareSource = Join-Path $repositoryRoot "firmware\current"
-$entrySketch = "Pfaff_GreenControl_Firmware_v1_3_1_GPIO21_windows_off.ino"
+$sketchName = "Pfaff_GreenControl_Firmware_v1_3_1_GPIO21_windows_off"
+$firmwareSource = Join-Path $repositoryRoot "firmware\current\$sketchName"
+$entrySketch = "$sketchName.ino"
 $temporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) (
   "greencontrol-firmware-compile-" + [guid]::NewGuid().ToString("N")
 )
-$temporarySketch = Join-Path $temporaryRoot (
-  "Pfaff_GreenControl_Firmware_v1_3_1_GPIO21_windows_off"
-)
+$temporarySketch = Join-Path $temporaryRoot $sketchName
 $buildPath = Join-Path $temporaryRoot "build"
 
 try {

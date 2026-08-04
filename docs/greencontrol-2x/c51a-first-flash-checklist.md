@@ -40,8 +40,10 @@ Platzhalter oder aktivierte Ausgänge.
 ## C. Build und Zielgerät
 
 - [ ] Projektordner: `C:\Users\alexi\Pfaff-GreenControl-2.x`.
-- [ ] Buildquelle: ausschließlich `firmware/current/`.
-- [ ] FQBN: `esp32:esp32:esp32s3`; ESP32-Core: 3.3.10.
+- [ ] Buildquelle: ausschließlich
+      `firmware/current/Pfaff_GreenControl_Firmware_v1_3_1_GPIO21_windows_off/`.
+- [ ] FQBN: `esp32:esp32:esp32s3:USBMode=hwcdc,CDCOnBoot=cdc`;
+      ESP32-Core: 3.3.10.
 - [ ] Board: ESP32S3 Dev Module; Flash: 4 MB; Partition: `default`.
 - [ ] Ein eindeutiger ESP32-COM-Port ist erkannt.
 - [ ] Es kann nicht versehentlich ein anderes Gerät geflasht werden.

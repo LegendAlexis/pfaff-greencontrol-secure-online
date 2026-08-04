@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "status": "c5.1b-ch5-conditional-flash-candidate",
   "architectureFinal": false,
-  "sourceDirectory": "firmware/current",
-  "entrySketch": "firmware/current/Pfaff_GreenControl_Firmware_v1_3_1_GPIO21_windows_off.ino",
+  "sourceDirectory": "firmware/current/Pfaff_GreenControl_Firmware_v1_3_1_GPIO21_windows_off",
+  "entrySketch": "firmware/current/Pfaff_GreenControl_Firmware_v1_3_1_GPIO21_windows_off/Pfaff_GreenControl_Firmware_v1_3_1_GPIO21_windows_off.ino",
   "legacySourceExcluded": "waveshare_greenhouse_frost_safe.ino",
   "hardware": {
     "boardFamily": "Waveshare ESP32-S3-ETH-8DI-8RO",

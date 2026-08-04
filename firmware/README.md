@@ -14,11 +14,15 @@ Architekturphase festgelegt.
 
 ## Abgrenzung
 
-- Aktuelle Buildquelle: `firmware/current/`
+- Aktuelle Buildquelle:
+  `firmware/current/Pfaff_GreenControl_Firmware_v1_3_1_GPIO21_windows_off/`
 - Legacy-Datei: `/waveshare_greenhouse_frost_safe.ino`
 - Die Legacy-Datei bleibt unverändert und ist keine aktuelle Buildquelle.
 - `GCConfig.h` ist lokal, geheim und von Git ausgeschlossen.
 - `GCConfig.example.h` enthält nur sichere Platzhalter.
+- Arduino IDE und `arduino-cli` verwenden denselben kanonischen Sketchordner;
+  zusätzliche Include-Pfade oder eine manuell zusammengesetzte Quellstruktur
+  sind nicht erforderlich.
 - Phase 1B verändert keine Firmwarelogik, aktiviert keine Fenster, flasht kein
   Gerät und implementiert kein OTA.
 

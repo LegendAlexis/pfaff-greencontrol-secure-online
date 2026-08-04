@@ -75,7 +75,8 @@ Sinngemäßer Aufruf:
 Das Skript:
 
 1. erstellt ein eindeutig benanntes temporäres Verzeichnis,
-2. kopiert ausschließlich `firmware/current/`,
+2. kopiert ausschließlich den kanonischen Sketchordner unter
+   `firmware/current/Pfaff_GreenControl_Firmware_v1_3_1_GPIO21_windows_off/`,
 3. schließt jede vorhandene `GCConfig.h` aus,
 4. erstellt nur temporär eine secret-freie `GCConfig.h` aus
    `GCConfig.example.h`,

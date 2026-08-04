@@ -14,4 +14,5 @@ Es wurden nur diese zwei Funktionen angepasst:
    CH4 Wand ZU   gesperrt
 
 Bewässerung, Cloud/API, WLAN und die übrige Logik bleiben bestehen.
-Die vorhandene GCConfig.h muss in diesen Ordner kopiert werden.
+Die vorhandene GCConfig.h muss in den gleichnamigen Arduino-Sketchordner
+Pfaff_GreenControl_Firmware_v1_3_1_GPIO21_windows_off kopiert werden.

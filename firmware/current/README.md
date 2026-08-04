@@ -19,7 +19,14 @@ gesperrt, und Fensterbefehle dürfen keine Bewegung auslösen.
 
 ## Lokale Konfiguration
 
-1. `GCConfig.example.h` lokal als `GCConfig.h` kopieren.
+Der kanonische Arduino-Sketchordner ist:
+
+`Pfaff_GreenControl_Firmware_v1_3_1_GPIO21_windows_off/`
+
+Alle `.ino`-, `.cpp`- und `.h`-Quellen liegen gemeinsam in diesem Ordner. Die
+Arduino IDE und `arduino-cli` kompilieren damit dieselbe Buildquelle.
+
+1. Im Sketchordner `GCConfig.example.h` lokal als `GCConfig.h` kopieren.
 2. WLAN-SSID und WLAN-Passwort lokal ergänzen.
 3. API-URL, Geräte-ID und Geräte-Secret lokal ergänzen.
 4. Alle als unbestätigt dokumentierten Board-, Ein-/Ausgangs- und Zeitwerte
@@ -37,6 +44,7 @@ dokumentiert und wird in Phase 1B nicht korrigiert.
 
 ## Architekturvorbehalt
 
-`firmware/current/` ist eine Übergangs-Baseline. Die endgültige Repository-,
-Firmware-, Profil-, Build- und Releasestruktur wird erst in einer späteren
-Architekturphase festgelegt.
+Der Inhalt bleibt eine Firmware-Baseline. Die kanonische Arduino-Sketchstruktur
+behebt ausschließlich die unterschiedliche Quellauflösung von IDE und CLI und
+ändert keine Firmwarelogik. Die endgültige Firmware-, Profil-, Build- und
+Releasestruktur wird erst in einer späteren Architekturphase festgelegt.
