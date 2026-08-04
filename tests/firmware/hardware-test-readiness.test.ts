@@ -13,12 +13,16 @@ async function source(name: string) {
 
 test("C5 diagnostics are opt-in and never print device credentials", async () => {
   const config = await source("GCConfig.example.h");
+  const sketch = await source(
+    "Pfaff_GreenControl_Firmware_v1_3_1_GPIO21_windows_off.ino",
+  );
   const implementation = [
     await source("GCCommandPollClient.cpp"),
     await source("GCCommandOrchestrator.cpp"),
   ].join("\n");
 
   assert.match(config, /#define GC_COMMAND_DIAGNOSTICS 0/);
+  assert.doesNotMatch(sketch, /BOOTCHECK-/);
   assert.match(implementation, /if \(GC_COMMAND_DIAGNOSTICS/);
   assert.match(implementation, /C5 TLS CONFIG READY/);
   assert.match(implementation, /C5 POLL OK/);
