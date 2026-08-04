@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -19,6 +20,17 @@ const roofConfiguration: WindowSafetyConfiguration = {
   maximumClosingTimeMs: 120_000,
   limitSensorsRequired: true,
 };
+
+test("keeps W1 independent from transport, persistence and hardware", async () => {
+  const source = await readFile(
+    new URL("../../lib/domain/window-safety.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(source, /createAdminClient|supabase|fetch\s*\(/i);
+  assert.doesNotMatch(source, /digitalWrite|pinMode|GCRelayBoard|Arduino\.h/);
+  assert.doesNotMatch(source, /app\/api|device_commands|GCConfig/);
+});
 
 test("starts disabled windows safely with an unknown position", () => {
   assert.deepEqual(initialWindowSafetyState({ enabled: false }), {
