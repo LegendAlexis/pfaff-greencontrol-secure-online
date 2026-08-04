@@ -5,6 +5,7 @@ import {
   initialWindowSafetyState,
   isValidWindowSafetyConfiguration,
   planWindowCommand,
+  planWindowSafetyEvent,
   validateWindowSafetyState,
   type WindowSafetyConfiguration,
   type WindowSafetyState,
@@ -345,4 +346,204 @@ test("never infers a physical position from an unconfirmed target", () => {
 
   assert.equal(decision.kind, "requires_output_confirmation");
   assert.equal(decision.onConfirmed.state.position, "unknown");
+});
+
+test("stops at the expected roof limit and confirms the end position", () => {
+  const opening = {
+    ...initialWindowSafetyState({
+      enabled: true,
+      openLimit: false,
+      closedLimit: false,
+    }),
+    movement: "opening" as const,
+    position: "partially_open" as const,
+    motionStartedAtMs: 100,
+  };
+  const transition = planWindowSafetyEvent({
+    state: opening,
+    event: {
+      type: "limits_changed",
+      openLimit: true,
+      closedLimit: false,
+    },
+    configuration: { ...roofConfiguration, enabled: true },
+  });
+
+  assert.equal(transition.kind, "requires_output_confirmation");
+  assert.equal(transition.action, "all_off");
+  assert.equal(transition.onConfirmed.movement, "stopped");
+  assert.equal(transition.onConfirmed.position, "open");
+  assert.equal(transition.onConfirmed.componentStatus, "ready");
+});
+
+test("latches conflicting and newly unexpected limit signals", () => {
+  const closing = {
+    ...initialWindowSafetyState({
+      enabled: true,
+      openLimit: false,
+      closedLimit: false,
+    }),
+    movement: "closing" as const,
+    position: "partially_open" as const,
+    motionStartedAtMs: 100,
+  };
+  const scenarios = [
+    {
+      event: {
+        type: "limits_changed" as const,
+        openLimit: true,
+        closedLimit: true,
+      },
+      fault: "conflicting_limits",
+    },
+    {
+      event: {
+        type: "limits_changed" as const,
+        openLimit: true,
+        closedLimit: false,
+      },
+      fault: "unexpected_limit",
+    },
+  ];
+
+  for (const scenario of scenarios) {
+    const transition = planWindowSafetyEvent({
+      state: closing,
+      event: scenario.event,
+      configuration: { ...roofConfiguration, enabled: true },
+    });
+    assert.equal(transition.kind, "requires_output_confirmation");
+    assert.equal(transition.action, "all_off");
+    assert.equal(transition.onConfirmed.componentStatus, "fault_latched");
+    assert.equal(transition.onConfirmed.faultCode, scenario.fault);
+  }
+});
+
+test("allows movement away from an already active origin limit", () => {
+  const opening = {
+    ...initialWindowSafetyState({
+      enabled: true,
+      openLimit: false,
+      closedLimit: true,
+    }),
+    movement: "opening" as const,
+    position: "partially_open" as const,
+    motionStartedAtMs: 100,
+  };
+  const transition = planWindowSafetyEvent({
+    state: opening,
+    event: {
+      type: "limits_changed",
+      openLimit: false,
+      closedLimit: true,
+    },
+    configuration: { ...roofConfiguration, enabled: true },
+  });
+
+  assert.equal(transition.kind, "immediate");
+  assert.equal(transition.state.movement, "opening");
+  assert.equal(transition.state.componentStatus, "ready");
+});
+
+test("latches a local runtime fault without any network decision", () => {
+  const opening = {
+    ...initialWindowSafetyState({ enabled: true }),
+    movement: "opening" as const,
+    position: "unknown" as const,
+    motionStartedAtMs: 1_000,
+  };
+  const transition = planWindowSafetyEvent({
+    state: opening,
+    event: { type: "tick", nowMs: 121_000 },
+    configuration: { ...roofConfiguration, enabled: true },
+  });
+
+  assert.equal(transition.kind, "requires_output_confirmation");
+  assert.equal(transition.action, "all_off");
+  assert.equal(transition.onConfirmed.componentStatus, "fault_latched");
+  assert.equal(
+    transition.onConfirmed.faultCode,
+    "maximum_runtime_exceeded",
+  );
+  assert.equal(transition.onConfirmed.position, "unknown");
+});
+
+test("starts the pending direction only after the interlock delay", () => {
+  const waiting = {
+    ...initialWindowSafetyState({
+      enabled: true,
+      openLimit: false,
+      closedLimit: false,
+      lastSequence: 8,
+    }),
+    position: "partially_open" as const,
+    pendingDirection: "close" as const,
+    interlockUntilMs: 2_000,
+  };
+
+  const early = planWindowSafetyEvent({
+    state: waiting,
+    event: { type: "tick", nowMs: 1_999 },
+    configuration: { ...roofConfiguration, enabled: true },
+  });
+  assert.equal(early.kind, "immediate");
+  assert.equal(early.state.movement, "stopped");
+
+  const due = planWindowSafetyEvent({
+    state: waiting,
+    event: { type: "tick", nowMs: 2_000 },
+    configuration: { ...roofConfiguration, enabled: true },
+  });
+  assert.equal(due.kind, "requires_output_confirmation");
+  assert.equal(due.action, "drive_close");
+  assert.equal(due.onConfirmed.movement, "closing");
+  assert.equal(due.onConfirmed.pendingDirection, null);
+});
+
+test("emergency stop and disable both require confirmed all-off", () => {
+  const moving = {
+    ...initialWindowSafetyState({ enabled: true }),
+    movement: "opening" as const,
+    position: "partially_open" as const,
+    motionStartedAtMs: 100,
+  };
+
+  const emergency = planWindowSafetyEvent({
+    state: moving,
+    event: { type: "emergency_stop" },
+    configuration: { ...roofConfiguration, enabled: true },
+  });
+  assert.equal(emergency.kind, "requires_output_confirmation");
+  assert.equal(emergency.action, "all_off");
+  assert.equal(emergency.onConfirmed.componentStatus, "emergency_stopped");
+  assert.equal(emergency.onConfirmed.movement, "stopped");
+
+  const disabled = planWindowSafetyEvent({
+    state: moving,
+    event: { type: "configuration_disabled" },
+    configuration: { ...roofConfiguration, enabled: true },
+  });
+  assert.equal(disabled.kind, "requires_output_confirmation");
+  assert.equal(disabled.action, "all_off");
+  assert.equal(disabled.onConfirmed.componentStatus, "disabled");
+});
+
+test("keeps roof and side state fully independent", () => {
+  const roof = initialWindowSafetyState({
+    enabled: true,
+    openLimit: false,
+    closedLimit: true,
+  });
+  const side = initialWindowSafetyState({ enabled: true });
+
+  const roofDecision = planWindowCommand({
+    state: roof,
+    command: { id: "roof-open", operation: "open", sequence: 1 },
+    configuration: { ...roofConfiguration, enabled: true },
+    nowMs: 1_000,
+  });
+
+  assert.equal(roofDecision.kind, "requires_output_confirmation");
+  assert.equal(roofDecision.onConfirmed.state.movement, "opening");
+  assert.deepEqual(side, initialWindowSafetyState({ enabled: true }));
 });

@@ -126,6 +126,33 @@ export type WindowCommandDecision =
   | WindowImmediateDecision
   | WindowOutputDecision;
 
+export type WindowSafetyEvent =
+  | { type: "tick"; nowMs: number }
+  | {
+      type: "limits_changed";
+      openLimit: boolean | null;
+      closedLimit: boolean | null;
+    }
+  | { type: "emergency_stop" }
+  | { type: "configuration_disabled" };
+
+export type WindowSafetyImmediateTransition = {
+  kind: "immediate";
+  actions: [];
+  state: WindowSafetyState;
+};
+
+export type WindowSafetyOutputTransition = {
+  kind: "requires_output_confirmation";
+  action: WindowSafetyAction;
+  onConfirmed: WindowSafetyState;
+  onFailure: WindowSafetyState;
+};
+
+export type WindowSafetyTransition =
+  | WindowSafetyImmediateTransition
+  | WindowSafetyOutputTransition;
+
 export function initialWindowSafetyState(args: {
   enabled: boolean;
   openLimit?: boolean | null;
@@ -348,6 +375,233 @@ export function planWindowCommand(args: {
     command,
     state,
   );
+}
+
+export function planWindowSafetyEvent(args: {
+  state: WindowSafetyState;
+  event: WindowSafetyEvent;
+  configuration: WindowSafetyConfiguration;
+}): WindowSafetyTransition {
+  const { state, event, configuration } = args;
+
+  if (event.type === "emergency_stop") {
+    return safetyOutput(
+      "all_off",
+      {
+        ...stoppedSafetyState(state),
+        componentStatus: "emergency_stopped",
+        faultCode: "emergency_stop",
+      },
+      state,
+    );
+  }
+
+  if (event.type === "configuration_disabled") {
+    return safetyOutput(
+      "all_off",
+      {
+        ...stoppedSafetyState(state),
+        componentStatus: "disabled",
+        faultCode: null,
+      },
+      state,
+    );
+  }
+
+  if (event.type === "limits_changed") {
+    return planLimitTransition(state, event, configuration);
+  }
+
+  return planTickTransition(state, event.nowMs, configuration);
+}
+
+function planLimitTransition(
+  state: WindowSafetyState,
+  event: Extract<WindowSafetyEvent, { type: "limits_changed" }>,
+  configuration: WindowSafetyConfiguration,
+): WindowSafetyTransition {
+  const withLimits = {
+    ...state,
+    openLimit: event.openLimit,
+    closedLimit: event.closedLimit,
+  };
+
+  if (event.openLimit === true && event.closedLimit === true) {
+    return safetyOutput(
+      "all_off",
+      latchedFault(withLimits, "conflicting_limits"),
+      state,
+    );
+  }
+
+  if (
+    configuration.limitSensorsRequired &&
+    (event.openLimit === null || event.closedLimit === null)
+  ) {
+    return safetyOutput(
+      "all_off",
+      latchedFault(withLimits, "sensor_unavailable"),
+      state,
+    );
+  }
+
+  const openActivated = event.openLimit === true && state.openLimit !== true;
+  const closedActivated =
+    event.closedLimit === true && state.closedLimit !== true;
+
+  if (state.movement === "opening" && closedActivated) {
+    return safetyOutput(
+      "all_off",
+      latchedFault(withLimits, "unexpected_limit"),
+      state,
+    );
+  }
+  if (state.movement === "closing" && openActivated) {
+    return safetyOutput(
+      "all_off",
+      latchedFault(withLimits, "unexpected_limit"),
+      state,
+    );
+  }
+
+  if (state.movement === "opening" && event.openLimit === true) {
+    return safetyOutput(
+      "all_off",
+      {
+        ...stoppedSafetyState(withLimits),
+        componentStatus: "ready",
+        position: "open",
+        faultCode: null,
+      },
+      state,
+    );
+  }
+  if (state.movement === "closing" && event.closedLimit === true) {
+    return safetyOutput(
+      "all_off",
+      {
+        ...stoppedSafetyState(withLimits),
+        componentStatus: "ready",
+        position: "closed",
+        faultCode: null,
+      },
+      state,
+    );
+  }
+
+  if (state.movement === "stopped") {
+    return safetyImmediate({
+      ...withLimits,
+      position: positionFromLimits(event.openLimit, event.closedLimit),
+    });
+  }
+
+  return safetyImmediate(withLimits);
+}
+
+function planTickTransition(
+  state: WindowSafetyState,
+  nowMs: number,
+  configuration: WindowSafetyConfiguration,
+): WindowSafetyTransition {
+  if (!isSafeMonotonicTime(nowMs) || !isValidWindowSafetyConfiguration(configuration)) {
+    return safetyOutput(
+      "all_off",
+      latchedFault(state, "configuration_invalid"),
+      state,
+    );
+  }
+
+  if (state.componentStatus !== "ready") {
+    return safetyImmediate(state);
+  }
+
+  if (state.movement !== "stopped" && state.motionStartedAtMs !== null) {
+    const maximumRuntime =
+      state.movement === "opening"
+        ? configuration.maximumOpeningTimeMs
+        : configuration.maximumClosingTimeMs;
+    if (nowMs - state.motionStartedAtMs >= maximumRuntime) {
+      return safetyOutput(
+        "all_off",
+        latchedFault(state, "maximum_runtime_exceeded"),
+        state,
+      );
+    }
+  }
+
+  if (
+    state.movement === "stopped" &&
+    state.pendingDirection !== null &&
+    state.interlockUntilMs !== null &&
+    nowMs >= state.interlockUntilMs
+  ) {
+    const targetLimit =
+      state.pendingDirection === "open" ? state.openLimit : state.closedLimit;
+    if (targetLimit === true) {
+      return safetyImmediate({
+        ...state,
+        position: state.pendingDirection === "open" ? "open" : "closed",
+        pendingDirection: null,
+        interlockUntilMs: null,
+      });
+    }
+
+    const moving = startMovement(
+      state,
+      state.pendingDirection,
+      state.lastSequence,
+      nowMs,
+    );
+    return safetyOutput(
+      state.pendingDirection === "open" ? "drive_open" : "drive_close",
+      moving,
+      state,
+    );
+  }
+
+  return safetyImmediate(state);
+}
+
+function safetyOutput(
+  action: WindowSafetyAction,
+  confirmedState: WindowSafetyState,
+  previousState: WindowSafetyState,
+): WindowSafetyOutputTransition {
+  return {
+    kind: "requires_output_confirmation",
+    action,
+    onConfirmed: confirmedState,
+    onFailure: latchedFault(previousState, "relay_write_failed"),
+  };
+}
+
+function safetyImmediate(
+  state: WindowSafetyState,
+): WindowSafetyImmediateTransition {
+  return { kind: "immediate", actions: [], state };
+}
+
+function stoppedSafetyState(state: WindowSafetyState): WindowSafetyState {
+  return {
+    ...state,
+    movement: "stopped",
+    position: conservativeStoppedPosition(state),
+    pendingDirection: null,
+    motionStartedAtMs: null,
+    interlockUntilMs: null,
+  };
+}
+
+function latchedFault(
+  state: WindowSafetyState,
+  faultCode: WindowFaultCode,
+): WindowSafetyState {
+  return {
+    ...stoppedSafetyState(state),
+    componentStatus: "fault_latched",
+    faultCode,
+  };
 }
 
 function outputDecision(
